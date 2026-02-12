@@ -249,6 +249,15 @@
             setTheme(current === 'dark' ? 'light' : 'dark');
         });
     })();
+    // Force-hide skip links that disisipkan environment
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('a').forEach(el => {
+            const text = (el.textContent || '').trim().toLowerCase();
+            if (text.startsWith('skip to main content') || text.startsWith('skip to navigation') || text === 'main content') {
+                el.style.display = 'none';
+            }
+        });
+    });
 </script>
 
 </body>
