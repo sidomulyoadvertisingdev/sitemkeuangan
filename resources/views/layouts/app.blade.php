@@ -53,11 +53,17 @@
         .theme-toggle { border: 1px solid rgba(0,0,0,0.05); border-radius: 999px; padding: 6px 10px; background: var(--card); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
         .theme-toggle i { color: var(--accent); }
         .brand-logo { width: 34px; height: 34px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
-        /* Hilangkan skip-link bawaan server/browser */
-        a[href="#main-content"], a[href="#navigation"], a[href="#skip-navigation"] {
-            position: absolute;
-            left: -9999px;
-            top: 0;
+        /* Hilangkan skip-link yang muncul dari environment/server */
+        a[href^="#skip"], a[href^="#main-content"], a[href^="#navigation"] {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0,0,0,0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
         }
     </style>
 
