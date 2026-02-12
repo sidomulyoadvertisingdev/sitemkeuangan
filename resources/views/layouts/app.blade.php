@@ -53,6 +53,12 @@
         .theme-toggle { border: 1px solid rgba(0,0,0,0.05); border-radius: 999px; padding: 6px 10px; background: var(--card); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
         .theme-toggle i { color: var(--accent); }
         .brand-logo { width: 34px; height: 34px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
+        /* Hilangkan skip-link bawaan server/browser */
+        a[href="#main-content"], a[href="#navigation"], a[href="#skip-navigation"] {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+        }
     </style>
 
     @stack('styles')
