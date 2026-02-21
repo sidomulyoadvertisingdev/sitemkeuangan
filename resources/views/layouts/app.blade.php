@@ -230,7 +230,7 @@
                             <a href="{{ route('iuran.index') }}"
                                class="nav-link {{ request()->routeIs('iuran*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-users"></i>
-                                <p>Iuran Pemuda</p>
+                                <p>Iuran Anggota</p>
                             </a>
                         </li>
                     @endif
