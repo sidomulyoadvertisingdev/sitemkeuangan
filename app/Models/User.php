@@ -18,6 +18,7 @@ class User extends Authenticatable
         'debts.manage' => 'Kelola Hutang & Piutang',
         'iuran.manage' => 'Kelola Iuran',
         'iuran.import' => 'Import / Export Iuran',
+        'reports.view' => 'Lihat Laporan Lengkap',
         'users.manage' => 'Kelola User & Hak Akses',
     ];
 

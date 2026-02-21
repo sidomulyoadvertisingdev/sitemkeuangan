@@ -22,8 +22,8 @@
     <div class="col-lg-3 col-6">
         <div class="small-box" style="background: linear-gradient(135deg,#2563eb33,#2563eb55);">
             <div class="inner">
-                <h3>Rp {{ number_format($income,0,',','.') }}</h3>
-                <p>Total Pemasukan</p>
+                <h3>Rp {{ number_format($incomeUsaha,0,',','.') }}</h3>
+                <p>Pemasukan Usaha</p>
             </div>
             <div class="icon">
                 <i class="fas fa-arrow-down"></i>
@@ -70,12 +70,36 @@
     <div class="col-lg-3 col-6">
         <div class="small-box" style="background: linear-gradient(135deg,#14b8a633,#14b8a655);">
             <div class="inner">
-                <h3>Rp {{ number_format($iuranCollectedMonth,0,',','.') }}</h3>
-                <p>Perolehan Iuran Bulan Ini</p>
-                <small>Total: Rp {{ number_format($iuranCollected,0,',','.') }} ({{ $iuranProgress }}%)</small>
+                <h3>Rp {{ number_format($incomeIuran,0,',','.') }}</h3>
+                <p>Pemasukan Iuran</p>
+                <small>Bulan ini: Rp {{ number_format($iuranCollectedMonth,0,',','.') }}</small>
             </div>
             <div class="icon">
                 <i class="fas fa-users"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-6">
+        <div class="small-box" style="background: linear-gradient(135deg,#0ea5e933,#0ea5e955);">
+            <div class="inner">
+                <h3>Rp {{ number_format($saldoUsaha,0,',','.') }}</h3>
+                <p>Saldo Usaha</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-store"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-6">
+        <div class="small-box" style="background: linear-gradient(135deg,#22c55e33,#22c55e55);">
+            <div class="inner">
+                <h3>Rp {{ number_format($totalSaldoDariPemasukan,0,',','.') }}</h3>
+                <p>Total Saldo Dari Pemasukan</p>
+            </div>
+            <div class="icon">
+                <i class="fas fa-coins"></i>
             </div>
         </div>
     </div>
@@ -253,7 +277,7 @@
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">
-                    Pemasukan vs Pengeluaran ({{ date('Y') }})
+                    Pemasukan Usaha & Iuran vs Pengeluaran ({{ date('Y') }})
                 </h3>
             </div>
             <div class="card-body">
@@ -381,10 +405,18 @@
             labels: @json($months),
             datasets: [
                 {
-                    label: 'Pemasukan',
-                    data: @json($incomes),
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40,167,69,0.15)',
+                    label: 'Pemasukan Usaha',
+                    data: @json($incomesUsaha),
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.12)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Pemasukan Iuran',
+                    data: @json($incomesIuran),
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.12)',
                     fill: true,
                     tension: 0.4
                 },

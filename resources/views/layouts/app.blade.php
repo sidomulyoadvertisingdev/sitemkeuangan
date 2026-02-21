@@ -198,6 +198,16 @@
                         </li>
                     @endif
 
+                    @if(auth()->user()->hasPermission('reports.view'))
+                        <li class="nav-item">
+                            <a href="{{ route('reports.index') }}"
+                               class="nav-link {{ request()->routeIs('reports*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-file-alt"></i>
+                                <p>Laporan Lengkap</p>
+                            </a>
+                        </li>
+                    @endif
+
                     @if(auth()->user()->hasPermission('users.manage'))
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}"

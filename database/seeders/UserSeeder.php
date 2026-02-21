@@ -29,6 +29,7 @@ class UserSeeder extends Seeder
                 'transactions.manage',
                 'bank_accounts.manage',
                 'iuran.manage',
+                'reports.view',
             ],
         ]);
     }

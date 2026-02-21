@@ -49,6 +49,7 @@ class RegisteredUserController extends Controller
                 'debts.manage',
                 'iuran.manage',
                 'iuran.import',
+                'reports.view',
             ],
         ]);
 

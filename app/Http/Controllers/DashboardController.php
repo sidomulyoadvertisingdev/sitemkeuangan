@@ -53,6 +53,11 @@ class DashboardController extends Controller
         $iuranBelumLunasCount = 0;
         $iuranLunasPercent = 0;
         $iuranBelumLunasPercent = 0;
+        $incomeUsaha = (float) $income;
+        $incomeIuran = 0.0;
+        $saldoUsaha = (float) $incomeUsaha - (float) $expense;
+        $totalSaldoDariPemasukan = (float) $incomeUsaha;
+        $iuranByMonth = collect();
 
         if (Schema::hasTable('iuran_members') && Schema::hasTable('iuran_installments')) {
             $iuranTarget = (float) IuranMember::where('user_id', $userId)->sum('target_amount');
@@ -73,6 +78,10 @@ class DashboardController extends Controller
             $iuranProgress = $iuranTarget > 0
                 ? min(100, round(($iuranCollected / $iuranTarget) * 100))
                 : 0;
+            $incomeIuran = (float) $iuranCollected;
+            $incomeUsaha = max(0, (float) $income - $incomeIuran);
+            $saldoUsaha = (float) $incomeUsaha - (float) $expense;
+            $totalSaldoDariPemasukan = (float) $incomeUsaha + (float) $incomeIuran;
 
             $iuranMembers = IuranMember::withSum('installments as paid_amount', 'amount')
                 ->where('user_id', $userId)
@@ -119,6 +128,20 @@ class DashboardController extends Controller
             $iuranMembers = $iuranMembers
                 ->where('is_completed', true)
                 ->values();
+
+            $iuranByMonth = IuranInstallment::query()
+                ->join('iuran_members', 'iuran_installments.iuran_member_id', '=', 'iuran_members.id')
+                ->where('iuran_members.user_id', $userId)
+                ->whereYear('iuran_installments.paid_at', $year)
+                ->select(
+                    DB::raw('MONTH(iuran_installments.paid_at) as month_num'),
+                    DB::raw('SUM(iuran_installments.amount) as total_amount')
+                )
+                ->groupBy(DB::raw('MONTH(iuran_installments.paid_at)'))
+                ->get()
+                ->mapWithKeys(function ($row) {
+                    return [(int) $row->month_num => (float) $row->total_amount];
+                });
         }
 
         // ================= GRAFIK BULANAN (AMAN COLLECTION) =================
@@ -130,7 +153,8 @@ class DashboardController extends Controller
             });
 
         $months   = [];
-        $incomes  = [];
+        $incomesUsaha = [];
+        $incomesIuran = [];
         $expenses = [];
 
         for ($m = 1; $m <= 12; $m++) {
@@ -139,9 +163,14 @@ class DashboardController extends Controller
 
             $months[] = date('M', mktime(0, 0, 0, $m, 1));
 
-            $incomes[] = $group
+            $totalIncomePerMonth = $group
                 ? $group->where('type', 'income')->sum('amount')
                 : 0;
+            $iuranIncomePerMonth = (float) ($iuranByMonth->get($m) ?? 0);
+            $usahaIncomePerMonth = max(0, (float) $totalIncomePerMonth - $iuranIncomePerMonth);
+
+            $incomesUsaha[] = $usahaIncomePerMonth;
+            $incomesIuran[] = $iuranIncomePerMonth;
 
             $expenses[] = $group
                 ? $group->where('type', 'expense')->sum('amount')
@@ -210,6 +239,10 @@ class DashboardController extends Controller
             'saldo',
             'income',
             'expense',
+            'incomeUsaha',
+            'incomeIuran',
+            'saldoUsaha',
+            'totalSaldoDariPemasukan',
             'hutang',
             'piutang',
             'iuranTarget',
@@ -223,7 +256,8 @@ class DashboardController extends Controller
             'iuranLunasPercent',
             'iuranBelumLunasPercent',
             'months',
-            'incomes',
+            'incomesUsaha',
+            'incomesIuran',
             'expenses',
             'categoryExpense',
             'budgets',

@@ -10,6 +10,7 @@ use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvestmentController;
 use App\Http\Controllers\IuranController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserManagementController;
 
 /*
@@ -45,6 +46,13 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+
+    Route::get('/reports', [ReportController::class, 'index'])
+        ->middleware('permission:reports.view')
+        ->name('reports.index');
+    Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])
+        ->middleware('permission:reports.view')
+        ->name('reports.export.pdf');
 
     /*
     |--------------------------------------------------------------------------
