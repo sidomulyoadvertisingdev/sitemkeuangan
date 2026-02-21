@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
 
-    {{-- ❌ JANGAN LOAD CSS DARI VITE --}}
+    {{-- JANGAN LOAD CSS DARI VITE --}}
     {{-- @vite(['resources/css/app.css']) --}}
 
     <style>
@@ -128,54 +128,85 @@
                         </a>
                     </li>
 
-                    <li class="nav-item">
-                        <a href="{{ route('transactions.index') }}"
-                           class="nav-link {{ request()->routeIs('transactions*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-exchange-alt"></i>
-                            <p>Transaksi</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('transactions.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('transactions.index') }}"
+                               class="nav-link {{ request()->routeIs('transactions*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-exchange-alt"></i>
+                                <p>Transaksi</p>
+                            </a>
+                        </li>
+                    @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('bank-accounts.index') }}"
-                           class="nav-link {{ request()->routeIs('bank-accounts*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-university"></i>
-                            <p>Rekening Bank</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('bank_accounts.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('bank-accounts.index') }}"
+                               class="nav-link {{ request()->routeIs('bank-accounts*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-university"></i>
+                                <p>Rekening Bank</p>
+                            </a>
+                        </li>
+                    @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('projects.index') }}"
-                           class="nav-link {{ request()->routeIs('projects*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-diagram-project"></i>
-                            <p>Proyek</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('projects.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('projects.index') }}"
+                               class="nav-link {{ request()->routeIs('projects*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-diagram-project"></i>
+                                <p>Proyek</p>
+                            </a>
+                        </li>
+                    @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('investments.index') }}"
-                           class="nav-link {{ request()->routeIs('investments*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-chart-line"></i>
-                            <p>Investasi</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('investments.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('investments.index') }}"
+                               class="nav-link {{ request()->routeIs('investments*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-chart-line"></i>
+                                <p>Investasi</p>
+                            </a>
+                        </li>
+                    @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('budgets.index') }}"
-                           class="nav-link {{ request()->routeIs('budgets*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-wallet"></i>
-                            <p>Budget</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('budgets.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('budgets.index') }}"
+                               class="nav-link {{ request()->routeIs('budgets*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-wallet"></i>
+                                <p>Budget</p>
+                            </a>
+                        </li>
+                    @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('debts.index') }}"
-                           class="nav-link {{ request()->routeIs('debts*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-hand-holding-usd"></i>
-                            <p>Hutang & Piutang</p>
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('debts.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('debts.index') }}"
+                               class="nav-link {{ request()->routeIs('debts*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-hand-holding-usd"></i>
+                                <p>Hutang & Piutang</p>
+                            </a>
+                        </li>
+                    @endif
 
+                    @if(auth()->user()->hasPermission('iuran.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('iuran.index') }}"
+                               class="nav-link {{ request()->routeIs('iuran*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>Iuran Pemuda</p>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()->hasPermission('users.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('users.index') }}"
+                               class="nav-link {{ request()->routeIs('users*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user-shield"></i>
+                                <p>Manajemen User</p>
+                            </a>
+                        </li>
+                    @endif
                     <li class="nav-item mt-3">
                         <a href="{{ route('logout') }}"
                            class="nav-link text-danger"

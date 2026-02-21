@@ -67,6 +67,19 @@
         </div>
     </div>
 
+    <div class="col-lg-3 col-6">
+        <div class="small-box" style="background: linear-gradient(135deg,#14b8a633,#14b8a655);">
+            <div class="inner">
+                <h3>Rp {{ number_format($iuranCollectedMonth,0,',','.') }}</h3>
+                <p>Perolehan Iuran Bulan Ini</p>
+                <small>Total: Rp {{ number_format($iuranCollected,0,',','.') }} ({{ $iuranProgress }}%)</small>
+            </div>
+            <div class="icon">
+                <i class="fas fa-users"></i>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 {{-- ================= REMINDER BUDGET ================= --}}
@@ -127,6 +140,106 @@
                     </tbody>
                 </table>
                 @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ================= PEROLEHAN IURAN ================= --}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-outline card-info">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-users mr-1"></i>
+                    Perolehan Iuran
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-6 mb-2">
+                        <strong>Target Iuran</strong>
+                        <div>Rp {{ number_format($iuranTarget,0,',','.') }}</div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <strong>Tercapai</strong>
+                        <div>Rp {{ number_format($iuranCollected,0,',','.') }}</div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <strong>Sisa</strong>
+                        <div>Rp {{ number_format($iuranRemaining,0,',','.') }}</div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <strong>Progress</strong>
+                        <div>{{ $iuranProgress }}%</div>
+                    </div>
+                </div>
+
+                <div class="progress progress-sm mt-2">
+                    <div class="progress-bar bg-info" style="width: {{ $iuranProgress }}%">
+                        {{ $iuranProgress }}%
+                    </div>
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nama Anggota</th>
+                                <th>Target</th>
+                                <th>Terbayar</th>
+                                <th>Sisa</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if($iuranMembers->isNotEmpty())
+                                <tr>
+                                    <td colspan="5" class="text-center font-weight-bold bg-light">
+                                        Daftar Anggota Iuran Lunas
+                                    </td>
+                                </tr>
+                            @endif
+                            @forelse($iuranMembers as $member)
+                                <tr>
+                                    <td>{{ $member->name }}</td>
+                                    <td>Rp {{ number_format($member->target_amount,0,',','.') }}</td>
+                                    <td>Rp {{ number_format($member->paid_amount,0,',','.') }}</td>
+                                    <td>Rp {{ number_format($member->remaining_amount,0,',','.') }}</td>
+                                    <td>
+                                        <span class="badge {{ $member->is_completed ? 'badge-success' : 'badge-warning' }}">
+                                            {{ $member->is_completed ? 'Lunas' : 'Belum Lunas' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Belum ada anggota yang lunas</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr class="my-3">
+                <h6 class="mb-2">Status Anggota Iuran</h6>
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <canvas id="iuranStatusChart" height="180"></canvas>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex flex-wrap">
+                            <div class="mr-4 mb-2">
+                                <span class="badge badge-success">Lunas</span>
+                                <div><strong>{{ $iuranLunasCount }}</strong> anggota ({{ $iuranLunasPercent }}%)</div>
+                            </div>
+                            <div class="mr-4 mb-2">
+                                <span class="badge badge-warning">Belum Lunas</span>
+                                <div><strong>{{ $iuranBelumLunasCount }}</strong> anggota ({{ $iuranBelumLunasPercent }}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -314,6 +427,27 @@
                 tooltip: { callbacks: {
                     label: function(ctx){ return ctx.label + ': Rp ' + ctx.parsed.toLocaleString('id-ID'); }
                 }}
+            }
+        }
+    });
+
+    // ================= DONUT STATUS IURAN =================
+    new Chart(document.getElementById('iuranStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [
+                'Lunas ({{ $iuranLunasCount }} | {{ $iuranLunasPercent }}%)',
+                'Belum Lunas ({{ $iuranBelumLunasCount }} | {{ $iuranBelumLunasPercent }}%)'
+            ],
+            datasets: [{
+                data: [{{ $iuranLunasCount }}, {{ $iuranBelumLunasCount }}],
+                backgroundColor: ['#22c55e', '#f59e0b']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
             }
         }
     });

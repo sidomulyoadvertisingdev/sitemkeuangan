@@ -9,6 +9,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvestmentController;
+use App\Http\Controllers\IuranController;
+use App\Http\Controllers\UserManagementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,12 +51,17 @@ Route::middleware(['auth'])->group(function () {
     | TRANSAKSI
     |--------------------------------------------------------------------------
     */
-    Route::resource('transactions', TransactionController::class);
-    Route::resource('bank-accounts', BankAccountController::class);
-    Route::resource('projects', ProjectController::class);
+    Route::resource('transactions', TransactionController::class)
+        ->middleware('permission:transactions.manage');
+    Route::resource('bank-accounts', BankAccountController::class)
+        ->middleware('permission:bank_accounts.manage');
+    Route::resource('projects', ProjectController::class)
+        ->middleware('permission:projects.manage');
     Route::post('projects/{project}/allocate', [ProjectController::class, 'storeAllocation'])
+        ->middleware('permission:projects.manage')
         ->name('projects.allocate');
     Route::post('projects/{project}/expenses', [ProjectController::class, 'storeExpense'])
+        ->middleware('permission:projects.manage')
         ->name('projects.expenses.store');
 
     /*
@@ -62,7 +69,9 @@ Route::middleware(['auth'])->group(function () {
     | INVESTASI
     |----------------------------------------------------------------------
     */
-    Route::resource('investments', InvestmentController::class)->only(['index','create','store']);
+    Route::resource('investments', InvestmentController::class)
+        ->only(['index', 'create', 'store'])
+        ->middleware('permission:investments.manage');
 
     /*
     |--------------------------------------------------------------------------
@@ -70,6 +79,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::post('/categories', [CategoryController::class, 'store'])
+        ->middleware('permission:transactions.manage')
         ->name('categories.store');
 
     Route::get('/categories/by-type/{type}', function ($type) {
@@ -84,16 +94,42 @@ Route::middleware(['auth'])->group(function () {
     | BUDGET
     |--------------------------------------------------------------------------
     */
-    Route::resource('budgets', BudgetController::class);
+    Route::resource('budgets', BudgetController::class)
+        ->middleware('permission:budgets.manage');
 
     /*
     |--------------------------------------------------------------------------
     | HUTANG & PIUTANG
     |--------------------------------------------------------------------------
     */
-    Route::resource('debts', DebtController::class);
+    Route::resource('debts', DebtController::class)
+        ->middleware('permission:debts.manage');
     Route::post('debts/{debt}/installments', [DebtController::class, 'storeInstallment'])
+        ->middleware('permission:debts.manage')
         ->name('debts.installments.store');
+    Route::post('iuran/import', [IuranController::class, 'import'])
+        ->middleware(['permission:iuran.manage', 'permission:iuran.import'])
+        ->name('iuran.import');
+    Route::get('iuran/import/template', [IuranController::class, 'downloadTemplate'])
+        ->middleware(['permission:iuran.manage', 'permission:iuran.import'])
+        ->name('iuran.import.template');
+    Route::post('iuran/installments/import', [IuranController::class, 'importInstallments'])
+        ->middleware(['permission:iuran.manage', 'permission:iuran.import'])
+        ->name('iuran.installments.import');
+    Route::get('iuran/installments/import/template', [IuranController::class, 'downloadInstallmentTemplate'])
+        ->middleware(['permission:iuran.manage', 'permission:iuran.import'])
+        ->name('iuran.installments.import.template');
+    Route::get('iuran/export/pdf', [IuranController::class, 'exportPdf'])
+        ->middleware(['permission:iuran.manage', 'permission:iuran.import'])
+        ->name('iuran.export.pdf');
+    Route::resource('iuran', IuranController::class)
+        ->middleware('permission:iuran.manage');
+    Route::post('iuran/{iuran}/installments', [IuranController::class, 'storeInstallment'])
+        ->middleware('permission:iuran.manage')
+        ->name('iuran.installments.store');
+    Route::resource('users', UserManagementController::class)
+        ->except(['show'])
+        ->middleware('permission:users.manage');
 
     /*
     |--------------------------------------------------------------------------
@@ -113,7 +149,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 | AUTH ROUTES (BREEZE / TAILWIND)
 |--------------------------------------------------------------------------
-| ⚠️ ROUTE INI HARUS TETAP ADA
+| ROUTE INI HARUS TETAP ADA
 | UI Breeze boleh tidak dipakai,
 | tapi route login/register tetap dibutuhkan Laravel
 */

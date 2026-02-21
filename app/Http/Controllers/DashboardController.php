@@ -7,7 +7,10 @@ use App\Models\Debt;
 use App\Models\Budget;
 use App\Models\Project;
 use App\Models\BankAccount;
+use App\Models\IuranMember;
+use App\Models\IuranInstallment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -39,6 +42,84 @@ class DashboardController extends Controller
             ->where('type', 'piutang')
             ->where('status', 'belum_lunas')
             ->sum('amount');
+
+        $iuranTarget = 0;
+        $iuranCollected = 0;
+        $iuranCollectedMonth = 0;
+        $iuranRemaining = 0;
+        $iuranProgress = 0;
+        $iuranMembers = collect();
+        $iuranLunasCount = 0;
+        $iuranBelumLunasCount = 0;
+        $iuranLunasPercent = 0;
+        $iuranBelumLunasPercent = 0;
+
+        if (Schema::hasTable('iuran_members') && Schema::hasTable('iuran_installments')) {
+            $iuranTarget = (float) IuranMember::where('user_id', $userId)->sum('target_amount');
+
+            $iuranCollected = (float) IuranInstallment::query()
+                ->join('iuran_members', 'iuran_installments.iuran_member_id', '=', 'iuran_members.id')
+                ->where('iuran_members.user_id', $userId)
+                ->sum('iuran_installments.amount');
+
+            $iuranCollectedMonth = (float) IuranInstallment::query()
+                ->join('iuran_members', 'iuran_installments.iuran_member_id', '=', 'iuran_members.id')
+                ->where('iuran_members.user_id', $userId)
+                ->whereMonth('iuran_installments.paid_at', $month)
+                ->whereYear('iuran_installments.paid_at', $year)
+                ->sum('iuran_installments.amount');
+
+            $iuranRemaining = max(0, $iuranTarget - $iuranCollected);
+            $iuranProgress = $iuranTarget > 0
+                ? min(100, round(($iuranCollected / $iuranTarget) * 100))
+                : 0;
+
+            $iuranMembers = IuranMember::withSum('installments as paid_amount', 'amount')
+                ->where('user_id', $userId)
+                ->get()
+                ->map(function ($member) {
+                    $paid = (float) ($member->paid_amount ?? 0);
+                    $target = (float) $member->target_amount;
+                    $remaining = max(0, $target - $paid);
+
+                    $member->paid_amount = $paid;
+                    $member->remaining_amount = $remaining;
+                    $member->progress = $target > 0
+                        ? min(100, round(($paid / $target) * 100))
+                        : 0;
+                    $member->is_completed = $remaining <= 0;
+
+                    return $member;
+                })
+                // Lunas paling atas, lalu progress terbesar, lalu nama agar urutan stabil.
+                ->sort(function ($a, $b) {
+                    if ($a->is_completed !== $b->is_completed) {
+                        return $a->is_completed ? -1 : 1;
+                    }
+
+                    if ($a->progress !== $b->progress) {
+                        return $a->progress < $b->progress ? 1 : -1;
+                    }
+
+                    return strcmp((string) $a->name, (string) $b->name);
+                })
+                ->values();
+
+            $iuranLunasCount = (int) $iuranMembers->where('is_completed', true)->count();
+            $iuranBelumLunasCount = (int) $iuranMembers->where('is_completed', false)->count();
+            $totalIuranMembers = $iuranLunasCount + $iuranBelumLunasCount;
+            $iuranLunasPercent = $totalIuranMembers > 0
+                ? round(($iuranLunasCount / $totalIuranMembers) * 100)
+                : 0;
+            $iuranBelumLunasPercent = $totalIuranMembers > 0
+                ? round(($iuranBelumLunasCount / $totalIuranMembers) * 100)
+                : 0;
+
+            // Di dashboard hanya tampilkan anggota yang sudah lunas.
+            $iuranMembers = $iuranMembers
+                ->where('is_completed', true)
+                ->values();
+        }
 
         // ================= GRAFIK BULANAN (AMAN COLLECTION) =================
         $monthlyRaw = Transaction::where('user_id', $userId)
@@ -131,6 +212,16 @@ class DashboardController extends Controller
             'expense',
             'hutang',
             'piutang',
+            'iuranTarget',
+            'iuranCollected',
+            'iuranCollectedMonth',
+            'iuranRemaining',
+            'iuranProgress',
+            'iuranMembers',
+            'iuranLunasCount',
+            'iuranBelumLunasCount',
+            'iuranLunasPercent',
+            'iuranBelumLunasPercent',
             'months',
             'incomes',
             'expenses',

@@ -39,6 +39,17 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'is_admin' => false,
+            'permissions' => [
+                'transactions.manage',
+                'bank_accounts.manage',
+                'projects.manage',
+                'investments.manage',
+                'budgets.manage',
+                'debts.manage',
+                'iuran.manage',
+                'iuran.import',
+            ],
         ]);
 
         event(new Registered($user));
