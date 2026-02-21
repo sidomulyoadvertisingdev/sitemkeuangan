@@ -53,6 +53,16 @@
         .theme-toggle { border: 1px solid rgba(0,0,0,0.05); border-radius: 999px; padding: 6px 10px; background: var(--card); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
         .theme-toggle i { color: var(--accent); }
         .brand-logo { width: 34px; height: 34px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
+        .main-header .dropdown-toggle {
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .content-header h1 { margin: 0; font-size: 1.5rem; }
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table th, .table td { vertical-align: middle; }
+        img { max-width: 100%; height: auto; }
         /* Hilangkan skip-link yang muncul dari environment/server */
         a[href^="#skip"], a[href^="#main-content"], a[href^="#navigation"] {
             position: absolute !important;
@@ -64,6 +74,33 @@
             clip: rect(0,0,0,0) !important;
             white-space: nowrap !important;
             border: 0 !important;
+        }
+        @media (max-width: 991.98px) {
+            .content .container-fluid,
+            .content-header .container-fluid { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .content-header { padding: 0.6rem 0; }
+            .content-header h1 { font-size: 1.25rem; }
+            .main-header .navbar-nav .nav-link { padding-left: 0.45rem; padding-right: 0.45rem; }
+            .small-box .inner h3 { font-size: 1.2rem; line-height: 1.2; }
+            .small-box .inner p { font-size: 0.85rem; margin-bottom: 0; }
+            .small-box .icon { display: none; }
+            .card-header, .card-body { padding: 0.75rem; }
+            .btn { margin-bottom: 0.35rem; }
+            .form-inline { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: stretch; }
+            .form-inline .form-control { width: 100%; margin-right: 0 !important; }
+            .form-inline .btn { margin-right: 0 !important; }
+            .pagination { flex-wrap: wrap; }
+            .main-header .dropdown-toggle { max-width: 120px; }
+        }
+        @media (max-width: 575.98px) {
+            .brand-link { justify-content: flex-start !important; padding-left: 0.75rem; }
+            .brand-text { font-size: 0.95rem; }
+            .main-header .dropdown-toggle { max-width: 84px; }
+            .theme-toggle { padding: 0.3rem 0.55rem; }
+            #themeLabel { display: none; }
+            .content-header h1 { font-size: 1.1rem; }
+            .nav-sidebar .nav-link p { font-size: 0.9rem; }
+            .table td, .table th { padding: 0.45rem; font-size: 0.85rem; }
         }
     </style>
 
@@ -298,6 +335,23 @@
                 el.style.display = 'none';
             }
         });
+
+        // Bungkus tabel yang belum responsive agar tetap bisa di-scroll di mobile.
+        document.querySelectorAll('.content table.table').forEach(table => {
+            if (table.closest('.table-responsive')) {
+                return;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive';
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        });
+
+        // Default collapse sidebar saat layar kecil supaya konten lebih lebar.
+        if (window.innerWidth < 992) {
+            document.body.classList.add('sidebar-collapse');
+        }
     });
 </script>
 
