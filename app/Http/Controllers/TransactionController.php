@@ -13,7 +13,7 @@ class TransactionController extends Controller
     public function index()
     {
         $transactions = Transaction::with(['category','project','bankAccount'])
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->latest()
             ->get();
 
@@ -22,8 +22,8 @@ class TransactionController extends Controller
 
     public function create()
     {
-        $accounts = \App\Models\BankAccount::where('user_id', auth()->id())->get();
-        $projects = \App\Models\Project::where('user_id', auth()->id())->get();
+        $accounts = \App\Models\BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $projects = \App\Models\Project::where('user_id', auth()->user()->tenantUserId())->get();
         // Kategori di-load via AJAX berdasarkan type
         return view('transactions.create', compact('accounts', 'projects'));
     }
@@ -42,18 +42,18 @@ class TransactionController extends Controller
 
         // ================= VALIDASI KATEGORI MILIK USER =================
         $category = Category::where('id', $request->category_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         // ================= VALIDASI REKENING & PROYEK =================
         $bankAccount = BankAccount::where('id', $request->bank_account_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         $project = null;
         if ($request->filled('project_id')) {
             $project = \App\Models\Project::where('id', $request->project_id)
-                ->where('user_id', auth()->id())
+                ->where('user_id', auth()->user()->tenantUserId())
                 ->firstOrFail();
         }
 
@@ -61,7 +61,7 @@ class TransactionController extends Controller
         if ($request->type === 'expense') {
 
             // Ambil budget sesuai kategori & periode
-            $budget = Budget::where('user_id', auth()->id())
+            $budget = Budget::where('user_id', auth()->user()->tenantUserId())
                 ->where('category_id', $category->id)
                 ->where('month', date('n', strtotime($request->date)))
                 ->where('year', date('Y', strtotime($request->date)))
@@ -69,7 +69,7 @@ class TransactionController extends Controller
 
             if ($budget) {
                 // Total pengeluaran saat ini
-                $used = Transaction::where('user_id', auth()->id())
+                $used = Transaction::where('user_id', auth()->user()->tenantUserId())
                     ->where('type', 'expense')
                     ->where('category_id', $category->id)
                     ->whereMonth('date', $budget->month)
@@ -89,7 +89,7 @@ class TransactionController extends Controller
 
         // ================= SIMPAN TRANSAKSI =================
         $txn = Transaction::create([
-            'user_id'     => auth()->id(),
+            'user_id'     => auth()->user()->tenantUserId(),
             'type'        => $request->type,
             'category_id' => $category->id,
             'project_id'  => $project?->id,
@@ -111,21 +111,21 @@ class TransactionController extends Controller
 
     public function edit(Transaction $transaction)
     {
-        abort_if($transaction->user_id !== auth()->id(), 403);
+        abort_if($transaction->user_id !== auth()->user()->tenantUserId(), 403);
 
-        $categories = Category::where('user_id', auth()->id())
+        $categories = Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', $transaction->type)
             ->get();
 
-        $accounts = \App\Models\BankAccount::where('user_id', auth()->id())->get();
-        $projects = \App\Models\Project::where('user_id', auth()->id())->get();
+        $accounts = \App\Models\BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $projects = \App\Models\Project::where('user_id', auth()->user()->tenantUserId())->get();
 
         return view('transactions.edit', compact('transaction', 'categories','accounts','projects'));
     }
 
     public function update(Request $request, Transaction $transaction)
     {
-        abort_if($transaction->user_id !== auth()->id(), 403);
+        abort_if($transaction->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'type'        => 'required|in:income,expense',
@@ -138,31 +138,31 @@ class TransactionController extends Controller
         ]);
 
         $category = Category::where('id', $request->category_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         $bankAccount = BankAccount::where('id', $request->bank_account_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         $project = null;
         if ($request->filled('project_id')) {
             $project = \App\Models\Project::where('id', $request->project_id)
-                ->where('user_id', auth()->id())
+                ->where('user_id', auth()->user()->tenantUserId())
                 ->firstOrFail();
         }
 
         // ================= LOGIKA BUDGET SAAT UPDATE (EXPENSE) =================
         if ($request->type === 'expense') {
 
-            $budget = Budget::where('user_id', auth()->id())
+            $budget = Budget::where('user_id', auth()->user()->tenantUserId())
                 ->where('category_id', $category->id)
                 ->where('month', date('n', strtotime($request->date)))
                 ->where('year', date('Y', strtotime($request->date)))
                 ->first();
 
             if ($budget) {
-                $used = Transaction::where('user_id', auth()->id())
+                $used = Transaction::where('user_id', auth()->user()->tenantUserId())
                     ->where('type', 'expense')
                     ->where('category_id', $category->id)
                     ->whereMonth('date', $budget->month)
@@ -214,7 +214,7 @@ class TransactionController extends Controller
 
     public function destroy(Transaction $transaction)
     {
-        abort_if($transaction->user_id !== auth()->id(), 403);
+        abort_if($transaction->user_id !== auth()->user()->tenantUserId(), 403);
 
         $bankId = $transaction->bank_account_id;
         $type   = $transaction->type;

@@ -15,7 +15,7 @@ class CategoryController extends Controller
         ]);
 
         $category = Category::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->user()->tenantUserId(),
             'name'    => $request->name,
             'type'    => $request->type,
         ]);

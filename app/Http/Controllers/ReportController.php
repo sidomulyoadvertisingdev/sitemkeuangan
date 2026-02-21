@@ -39,7 +39,7 @@ class ReportController extends Controller
 
     private function buildReportData(Request $request): array
     {
-        $userId = auth()->id();
+        $userId = auth()->user()->tenantUserId();
         $defaultStartDate = now()->startOfMonth()->toDateString();
         $defaultEndDate = now()->toDateString();
         $startDate = (string) $request->query('start_date', $defaultStartDate);

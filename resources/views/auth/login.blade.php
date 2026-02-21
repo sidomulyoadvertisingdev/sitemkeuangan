@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keuangan Pribadi - Login</title>
+    <title>RAMS Finance Solutions - Login</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -59,8 +59,8 @@
                 <text x="350" y="45" fill="#D4AF37" font-size="12" font-weight="600" text-anchor="end">+24.5%</text>
             </svg>
             <div class="mt-8 text-center lg:text-left text-white">
-                <h1 class="font-display text-2xl lg:text-4xl font-bold leading-tight">Solusi Keuangan Anda Lebih Baik</h1>
-                <p class="mt-4 text-sm lg:text-base opacity-80">Kelola investasi dan keuangan Anda dengan platform terpercaya</p>
+                <h1 class="font-display text-2xl lg:text-4xl font-bold leading-tight">RAMS Finance Solutions</h1>
+                <p class="mt-4 text-sm lg:text-base opacity-80">Transparansi kepada anggota Anda dengan pencatatan keuangan yang transparan</p>
             </div>
         </div>
     </div>
@@ -74,13 +74,13 @@
                         <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 100%);">
                             <img src="{{ asset('logo-finance.png') }}" alt="Logo" class="w-8 h-8 object-contain">
                         </div>
-                        <span class="font-display text-2xl font-bold" style="color: #0a1628;">Keuangan Pribadi</span>
+                        <span class="font-display text-2xl font-bold" style="color: #0a1628;">RAMS Finance Solutions</span>
                     </div>
                 </div>
 
                 <div class="text-center mb-8">
                     <h2 class="text-2xl font-semibold mb-2" style="color: #0a1628;">Selamat Datang Kembali</h2>
-                    <p class="text-sm" style="color: #6b7280;">Masuk ke akun Anda untuk melanjutkan</p>
+                    <p class="text-sm" style="color: #6b7280;">Transparansi kepada anggota Anda dengan pencatatan keuangan yang transparan</p>
                 </div>
 
                 {{-- Error --}}
@@ -91,6 +91,12 @@
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
+                    </div>
+                @endif
+
+                @if (session('status'))
+                    <div class="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        {{ session('status') }}
                     </div>
                 @endif
 
@@ -159,23 +165,21 @@
                 </div>
 
                 <div class="flex gap-3">
-                    <button type="button" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50" style="border-color: #e5e7eb;">
+                    <a href="{{ route('auth.google.redirect') }}"
+                       class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
+                       style="border-color: #e5e7eb;">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18.171 8.368h-.67v-.035H10v3.333h4.709A4.998 4.998 0 015 10a5 5 0 015-5c1.275 0 2.434.48 3.317 1.266l2.357-2.357A8.295 8.295 0 0010 1.667a8.333 8.333 0 100 16.666 8.333 8.333 0 008.171-9.965z" fill="#FFC107"/><path d="M2.628 6.121l2.74 2.009A4.998 4.998 0 0110 5c1.275 0 2.434.48 3.317 1.266l2.357-2.357A8.295 8.295 0 0010 1.667a8.329 8.329 0 00-7.372 4.454z" fill="#FF3D00"/><path d="M10 18.333a8.294 8.294 0 005.587-2.163l-2.579-2.183A4.964 4.964 0 0110 15a4.998 4.998 0 01-4.701-3.306l-2.72 2.095A8.328 8.328 0 0010 18.333z" fill="#4CAF50"/><path d="M18.171 8.368h-.67v-.035H10v3.333h4.709a5.015 5.015 0 01-1.703 2.321l2.58 2.183c-.183.166 2.747-2.003 2.747-6.17 0-.559-.057-1.104-.162-1.632z" fill="#1976D2"/></svg>
-                        <span class="text-sm font-medium" style="color: #374151;">Google</span>
-                    </button>
-                    <button type="button" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50" style="border-color: #e5e7eb;">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.94 10.567c-.023-2.384 1.946-3.531 2.034-3.587-1.107-1.62-2.832-1.842-3.446-1.868-1.468-.149-2.866.865-3.612.865-.745 0-1.898-.843-3.118-.82-1.604.023-3.084.932-3.91 2.369-1.666 2.891-.426 7.175 1.197 9.524.794 1.148 1.74 2.437 2.983 2.39 1.196-.048 1.648-.774 3.094-.774 1.446 0 1.852.774 3.118.75 1.29-.024 2.103-1.17 2.891-2.321.912-1.331 1.286-2.62 1.31-2.687-.029-.013-2.512-.965-2.54-3.831zM12.563 3.523c.66-.8 1.105-1.91.984-3.023-.95.039-2.103.633-2.785 1.432-.612.709-1.148 1.84-1.004 2.926 1.06.082 2.144-.539 2.805-1.335z" fill="#000"/></svg>
-                        <span class="text-sm font-medium" style="color: #374151;">Apple</span>
-                    </button>
+                        <span class="text-sm font-medium" style="color: #374151;">Masuk dengan Google</span>
+                    </a>
                 </div>
 
                 <p class="text-center mt-6 text-sm" style="color: #6b7280;">
                     Belum punya akun?
-                    <span class="font-semibold text-amber-500">Hubungi admin untuk registrasi</span>
+                    <a href="{{ route('register') }}" class="font-semibold text-amber-500 hover:underline">Daftar sekarang</a>
                 </p>
             </div>
             <p class="text-center mt-4 text-xs text-gray-400">
-                © {{ date('Y') }} Keuangan Pribadi
+                © {{ date('Y') }} RAMS Finance Solutions
             </p>
         </div>
     </div>

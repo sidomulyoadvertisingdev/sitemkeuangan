@@ -9,6 +9,10 @@ class User extends Authenticatable
 {
     use Notifiable;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_BANNED = 'banned';
+
     public const PERMISSIONS = [
         'transactions.manage' => 'Kelola Transaksi',
         'bank_accounts.manage' => 'Kelola Rekening Bank',
@@ -19,15 +23,26 @@ class User extends Authenticatable
         'iuran.manage' => 'Kelola Iuran',
         'iuran.import' => 'Import / Export Iuran',
         'reports.view' => 'Lihat Laporan Lengkap',
-        'users.manage' => 'Kelola User & Hak Akses',
+        'users.manage' => 'Kontrol Pengguna',
     ];
 
     protected $fillable = [
         'name',
+        'organization_name',
         'email',
+        'google_id',
+        'google_linked_at',
         'password',
         'is_admin',
+        'is_platform_admin',
         'permissions',
+        'account_status',
+        'approved_at',
+        'approved_by',
+        'data_owner_user_id',
+        'invite_quota',
+        'banned_at',
+        'banned_reason',
     ];
 
     protected $hidden = [
@@ -37,7 +52,12 @@ class User extends Authenticatable
 
     protected $casts = [
         'is_admin' => 'boolean',
+        'is_platform_admin' => 'boolean',
         'permissions' => 'array',
+        'invite_quota' => 'integer',
+        'google_linked_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'banned_at' => 'datetime',
     ];
 
     public static function permissionOptions(): array
@@ -47,11 +67,48 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
+        if (!$this->isApproved()) {
+            return false;
+        }
+
+        if ($this->is_platform_admin) {
+            return true;
+        }
+
+        if ($permission === 'users.manage') {
+            return $this->is_admin;
+        }
+
         if ($this->is_admin) {
             return true;
         }
 
         $permissions = $this->permissions ?? [];
         return in_array($permission, $permissions, true);
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->account_status === self::STATUS_APPROVED;
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->account_status === self::STATUS_PENDING;
+    }
+
+    public function isBanned(): bool
+    {
+        return $this->account_status === self::STATUS_BANNED;
+    }
+
+    public function tenantUserId(): int
+    {
+        return (int) ($this->data_owner_user_id ?: $this->id);
+    }
+
+    public function dataOwner()
+    {
+        return $this->belongsTo(User::class, 'data_owner_user_id');
     }
 }

@@ -16,7 +16,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $userId = auth()->id();
+        $userId = auth()->user()->tenantUserId();
         $year   = now()->year;
         $month  = now()->month;
 

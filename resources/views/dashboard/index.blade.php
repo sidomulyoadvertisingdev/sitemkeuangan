@@ -23,7 +23,7 @@
         <div class="small-box" style="background: linear-gradient(135deg,#2563eb33,#2563eb55);">
             <div class="inner">
                 <h3>Rp {{ number_format($incomeUsaha,0,',','.') }}</h3>
-                <p>Pemasukan Usaha</p>
+                <p>Pemasukan Usaha / Donatur</p>
             </div>
             <div class="icon">
                 <i class="fas fa-arrow-down"></i>
@@ -277,7 +277,7 @@
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">
-                    Pemasukan Usaha & Iuran vs Pengeluaran ({{ date('Y') }})
+                    Pemasukan Usaha / Donatur & Iuran vs Pengeluaran ({{ date('Y') }})
                 </h3>
             </div>
             <div class="card-body">
@@ -367,7 +367,7 @@
                     <tbody>
                         @php
                             $debts = \App\Models\Debt::with('installments')
-                                ->where('user_id', auth()->id())
+                                ->where('user_id', auth()->user()->tenantUserId())
                                 ->where('type','hutang')
                                 ->get();
                         @endphp
@@ -405,7 +405,7 @@
             labels: @json($months),
             datasets: [
                 {
-                    label: 'Pemasukan Usaha',
+                    label: 'Pemasukan Usaha / Donatur',
                     data: @json($incomesUsaha),
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37,99,235,0.12)',

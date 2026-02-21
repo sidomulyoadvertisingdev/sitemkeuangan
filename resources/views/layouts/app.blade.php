@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Rams Finance')</title>
+    <title>@yield('title', 'RAMS Finance Solutions')</title>
 
     {{-- Fonts --}}
     <link rel="dns-prefetch" href="//fonts.bunny.net">
@@ -144,9 +144,9 @@
     {{-- ================= SIDEBAR ================= --}}
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('dashboard') }}" class="brand-link text-center d-flex align-items-center justify-content-center">
-            <img src="{{ asset('logo-finance.png') }}" alt="Logo Keuangan Pribadi" class="brand-logo mr-2">
+            <img src="{{ asset('logo-finance.png') }}" alt="Logo RAMS Finance Solutions" class="brand-logo mr-2">
             <span class="brand-text font-weight-light">
-                Rams Finance
+                RAMS Finance Solutions
             </span>
         </a>
 

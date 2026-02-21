@@ -37,7 +37,7 @@ Route::get('/', function () {
 | AUTHENTICATED ROUTES (ADMIN PANEL - ADMINLTE)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'active_account'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -91,7 +91,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('categories.store');
 
     Route::get('/categories/by-type/{type}', function ($type) {
-        return \App\Models\Category::where('user_id', auth()->id())
+        return \App\Models\Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', $type)
             ->orderBy('name')
             ->get();
@@ -138,6 +138,15 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserManagementController::class)
         ->except(['show'])
         ->middleware('permission:users.manage');
+    Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])
+        ->middleware('permission:users.manage')
+        ->name('users.approve');
+    Route::post('users/{user}/ban', [UserManagementController::class, 'ban'])
+        ->middleware('permission:users.manage')
+        ->name('users.ban');
+    Route::post('users/{user}/unban', [UserManagementController::class, 'unban'])
+        ->middleware('permission:users.manage')
+        ->name('users.unban');
 
     /*
     |--------------------------------------------------------------------------

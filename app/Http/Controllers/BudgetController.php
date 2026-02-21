@@ -15,14 +15,14 @@ class BudgetController extends Controller
         $year  = request('year', now()->year);
 
         $budgets = Budget::with('category')
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->where('month', $month)
             ->where('year', $year)
             ->get()
             ->map(function ($budget) use ($month, $year) {
 
                 // Hitung total pengeluaran per kategori
-                $used = Transaction::where('user_id', auth()->id())
+                $used = Transaction::where('user_id', auth()->user()->tenantUserId())
                     ->where('type', 'expense')
                     ->where('category_id', $budget->category_id)
                     ->whereMonth('date', $month)
@@ -44,7 +44,7 @@ class BudgetController extends Controller
     public function create()
     {
         // HANYA kategori pengeluaran yang boleh dibudget
-        $categories = Category::where('user_id', auth()->id())
+        $categories = Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'expense')
             ->orderBy('name')
             ->get();
@@ -63,12 +63,12 @@ class BudgetController extends Controller
 
         // Pastikan kategori milik user & bertipe expense
         $category = Category::where('id', $request->category_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'expense')
             ->firstOrFail();
 
         // Cegah duplikasi budget kategori di bulan yang sama
-        $exists = Budget::where('user_id', auth()->id())
+        $exists = Budget::where('user_id', auth()->user()->tenantUserId())
             ->where('category_id', $category->id)
             ->where('month', $request->month)
             ->where('year', $request->year)
@@ -83,7 +83,7 @@ class BudgetController extends Controller
         }
 
         Budget::create([
-            'user_id'     => auth()->id(),
+            'user_id'     => auth()->user()->tenantUserId(),
             'category_id' => $category->id,
             'limit'       => $request->limit,
             'month'       => $request->month,
@@ -97,7 +97,7 @@ class BudgetController extends Controller
 
     public function destroy(Budget $budget)
     {
-        abort_if($budget->user_id !== auth()->id(), 403);
+        abort_if($budget->user_id !== auth()->user()->tenantUserId(), 403);
 
         $budget->delete();
 

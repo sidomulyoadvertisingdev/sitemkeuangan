@@ -12,7 +12,7 @@ class DebtController extends Controller
 {
     public function index()
     {
-        $debts = Debt::where('user_id', auth()->id())
+        $debts = Debt::where('user_id', auth()->user()->tenantUserId())
             ->orderBy('status')
             ->orderBy('due_date')
             ->get();
@@ -36,7 +36,7 @@ class DebtController extends Controller
         ]);
 
         Debt::create([
-            'user_id'  => auth()->id(),
+            'user_id'  => auth()->user()->tenantUserId(),
             'type'     => $request->type,
             'name'     => $request->name,
             'amount'   => $request->amount,
@@ -57,14 +57,14 @@ class DebtController extends Controller
 
     public function show(Debt $debt)
     {
-        abort_if($debt->user_id !== auth()->id(), 403);
+        abort_if($debt->user_id !== auth()->user()->tenantUserId(), 403);
         $debt->load(['installments.bankAccount','installments.category']);
 
         $paid = $debt->installments->sum('amount');
         $remaining = max(0, $debt->amount - $paid);
 
-        $accounts = BankAccount::where('user_id', auth()->id())->get();
-        $categories = Category::where('user_id', auth()->id())
+        $accounts = BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $categories = Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', $debt->type === 'piutang' ? 'income' : 'expense')
             ->orderBy('name')
             ->get();
@@ -79,7 +79,7 @@ class DebtController extends Controller
 
     public function storeInstallment(Request $request, Debt $debt)
     {
-        abort_if($debt->user_id !== auth()->id(), 403);
+        abort_if($debt->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'amount'          => 'required|numeric|min:1',
@@ -90,11 +90,11 @@ class DebtController extends Controller
         ]);
 
         $bank = BankAccount::where('id', $request->bank_account_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         $category = Category::where('id', $request->category_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->where('type', $debt->type === 'piutang' ? 'income' : 'expense')
             ->firstOrFail();
 
@@ -111,7 +111,7 @@ class DebtController extends Controller
         $txnType = $debt->type === 'piutang' ? 'income' : 'expense';
 
         \App\Models\Transaction::create([
-            'user_id'        => auth()->id(),
+            'user_id'        => auth()->user()->tenantUserId(),
             'type'           => $txnType,
             'category_id'    => $category->id,
             'project_id'     => null,
@@ -135,7 +135,7 @@ class DebtController extends Controller
 
     public function destroy(Debt $debt)
     {
-        abort_if($debt->user_id !== auth()->id(), 403);
+        abort_if($debt->user_id !== auth()->user()->tenantUserId(), 403);
 
         $debt->delete();
 

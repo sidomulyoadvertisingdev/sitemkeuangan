@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
@@ -31,32 +30,26 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'organization_name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
+            'organization_name' => $request->organization_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'is_admin' => false,
-            'permissions' => [
-                'transactions.manage',
-                'bank_accounts.manage',
-                'projects.manage',
-                'investments.manage',
-                'budgets.manage',
-                'debts.manage',
-                'iuran.manage',
-                'iuran.import',
-                'reports.view',
-            ],
+            'is_platform_admin' => false,
+            'permissions' => [],
+            'account_status' => User::STATUS_PENDING,
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(route('dashboard', absolute: false));
+        return redirect()
+            ->route('login')
+            ->with('status', 'Pendaftaran berhasil. Akun Anda menunggu persetujuan admin.');
     }
 }

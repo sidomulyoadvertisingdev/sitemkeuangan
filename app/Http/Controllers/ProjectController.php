@@ -18,7 +18,7 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::with('bankAccount', 'transactions')
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->latest()
             ->get()
             ->map(function ($project) {
@@ -38,7 +38,7 @@ class ProjectController extends Controller
 
     public function create()
     {
-        $accounts = BankAccount::where('user_id', auth()->id())->get();
+        $accounts = BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
         return view('projects.create', compact('accounts'));
     }
 
@@ -54,7 +54,7 @@ class ProjectController extends Controller
         ]);
 
         $project = Project::create([
-            'user_id'        => auth()->id(),
+            'user_id'        => auth()->user()->tenantUserId(),
             'bank_account_id'=> $request->bank_account_id,
             'name'           => $request->name,
             'description'    => $request->description,
@@ -70,12 +70,12 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        abort_if($project->user_id !== auth()->id(), 403);
+        abort_if($project->user_id !== auth()->user()->tenantUserId(), 403);
 
         $project->load(['bankAccount', 'transactions.category']);
 
-        $accounts  = BankAccount::where('user_id', auth()->id())->get();
-        $categories= Category::where('user_id', auth()->id())
+        $accounts  = BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $categories= Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'expense')
             ->get();
 
@@ -101,7 +101,7 @@ class ProjectController extends Controller
 
     public function storeAllocation(Request $request, Project $project)
     {
-        abort_if($project->user_id !== auth()->id(), 403);
+        abort_if($project->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'bank_account_id' => 'required|exists:bank_accounts,id',
@@ -125,7 +125,7 @@ class ProjectController extends Controller
 
     public function storeExpense(Request $request, Project $project)
     {
-        abort_if($project->user_id !== auth()->id(), 403);
+        abort_if($project->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'bank_account_id' => 'required|exists:bank_accounts,id',
@@ -160,7 +160,7 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
-        abort_if($project->user_id !== auth()->id(), 403);
+        abort_if($project->user_id !== auth()->user()->tenantUserId(), 403);
 
         // Hitung dampak saldo sebelum data dihapus (cascade)
         $txnGroups = \App\Models\Transaction::where('project_id', $project->id)

@@ -25,9 +25,18 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'organization_name' => fake()->company(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'is_admin' => false,
+            'is_platform_admin' => false,
+            'permissions' => [
+                'transactions.manage',
+                'bank_accounts.manage',
+            ],
+            'account_status' => \App\Models\User::STATUS_APPROVED,
+            'approved_at' => now(),
             'remember_token' => Str::random(10),
         ];
     }

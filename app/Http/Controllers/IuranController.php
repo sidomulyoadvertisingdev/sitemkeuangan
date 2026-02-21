@@ -17,7 +17,7 @@ class IuranController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $members = IuranMember::withSum('installments as paid_amount', 'amount')
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->when($q !== '', function ($query) use ($q) {
                 $query->where('name', 'like', '%' . $q . '%');
             })
@@ -56,7 +56,7 @@ class IuranController extends Controller
         ]);
 
         IuranMember::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->user()->tenantUserId(),
             'name' => $request->name,
             'target_amount' => $request->target_amount,
             'target_start_year' => $request->target_start_year,
@@ -72,7 +72,7 @@ class IuranController extends Controller
 
     public function show(IuranMember $iuran)
     {
-        abort_if($iuran->user_id !== auth()->id(), 403);
+        abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
 
         $iuran->load([
             'installments' => function ($query) {
@@ -88,8 +88,8 @@ class IuranController extends Controller
             ? min(100, round(($paid / $iuran->target_amount) * 100))
             : 0;
 
-        $accounts = BankAccount::where('user_id', auth()->id())->get();
-        $categories = Category::where('user_id', auth()->id())
+        $accounts = BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $categories = Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'income')
             ->orderBy('name')
             ->get();
@@ -106,14 +106,14 @@ class IuranController extends Controller
 
     public function edit(IuranMember $iuran)
     {
-        abort_if($iuran->user_id !== auth()->id(), 403);
+        abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
 
         return view('iuran.edit', compact('iuran'));
     }
 
     public function update(Request $request, IuranMember $iuran)
     {
-        abort_if($iuran->user_id !== auth()->id(), 403);
+        abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
 
         $currentYear = (int) date('Y');
 
@@ -142,7 +142,7 @@ class IuranController extends Controller
 
     public function storeInstallment(Request $request, IuranMember $iuran)
     {
-        abort_if($iuran->user_id !== auth()->id(), 403);
+        abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'amount' => 'required|numeric|min:1',
@@ -153,11 +153,11 @@ class IuranController extends Controller
         ]);
 
         $bank = BankAccount::where('id', $request->bank_account_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->firstOrFail();
 
         $category = Category::where('id', $request->category_id)
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'income')
             ->firstOrFail();
 
@@ -255,7 +255,7 @@ class IuranController extends Controller
                 continue;
             }
 
-            $member = IuranMember::where('user_id', auth()->id())
+            $member = IuranMember::where('user_id', auth()->user()->tenantUserId())
                 ->whereRaw('LOWER(name) = ?', [strtolower($payload['name'])])
                 ->first();
 
@@ -273,7 +273,7 @@ class IuranController extends Controller
             }
 
             IuranMember::create([
-                'user_id' => auth()->id(),
+                'user_id' => auth()->user()->tenantUserId(),
                 'name' => $payload['name'],
                 'target_amount' => $payload['target_amount'],
                 'target_start_year' => $payload['target_start_year'],
@@ -355,7 +355,7 @@ class IuranController extends Controller
         $skipped = 0;
         $line = 1;
         $warnings = [];
-        $userId = auth()->id();
+        $userId = auth()->user()->tenantUserId();
 
         while (($row = fgetcsv($handle)) !== false) {
             $line++;
@@ -479,7 +479,7 @@ class IuranController extends Controller
     public function exportPdf()
     {
         $members = IuranMember::withSum('installments as paid_amount', 'amount')
-            ->where('user_id', auth()->id())
+            ->where('user_id', auth()->user()->tenantUserId())
             ->orderByRaw("CASE WHEN status = 'lunas' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get()
@@ -519,7 +519,7 @@ class IuranController extends Controller
 
     public function destroy(IuranMember $iuran)
     {
-        abort_if($iuran->user_id !== auth()->id(), 403);
+        abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
 
         if ($iuran->installments()->exists()) {
             return back()->withErrors([
@@ -568,7 +568,7 @@ class IuranController extends Controller
         ]);
 
         Transaction::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->user()->tenantUserId(),
             'type' => 'income',
             'category_id' => $category->id,
             'project_id' => null,

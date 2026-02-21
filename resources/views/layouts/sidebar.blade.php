@@ -3,7 +3,7 @@
     {{-- BRAND --}}
     <a href="{{ route('dashboard') }}" class="brand-link">
         <span class="brand-text font-weight-light ml-2">
-            Keuangan Pribadi
+            RAMS Finance Solutions
         </span>
     </a>
 

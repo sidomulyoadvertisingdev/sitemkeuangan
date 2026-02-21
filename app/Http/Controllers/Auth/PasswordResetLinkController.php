@@ -37,8 +37,8 @@ class PasswordResetLinkController extends Controller
         );
 
         return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
+                    ? back()->with('status', 'Jika email terdaftar, link reset password sudah dikirim ke email tersebut.')
                     : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+                        ->withErrors(['email' => 'Gagal mengirim email reset password. Periksa email atau konfigurasi mail server.']);
     }
 }

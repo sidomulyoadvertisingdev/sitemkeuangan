@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCurrentUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class IuranMember extends Model
 {
     use HasFactory;
+    use BelongsToCurrentUser;
 
     protected $casts = [
         'target_start_year' => 'integer',

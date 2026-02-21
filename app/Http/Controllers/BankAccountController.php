@@ -9,7 +9,7 @@ class BankAccountController extends Controller
 {
     public function index()
     {
-        $accounts = BankAccount::where('user_id', auth()->id())
+        $accounts = BankAccount::where('user_id', auth()->user()->tenantUserId())
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get();
@@ -33,7 +33,7 @@ class BankAccountController extends Controller
         ]);
 
         $account = BankAccount::create([
-            'user_id'        => auth()->id(),
+            'user_id'        => auth()->user()->tenantUserId(),
             'name'           => $request->name,
             'bank_name'      => $request->bank_name,
             'account_number' => $request->account_number,
@@ -51,14 +51,14 @@ class BankAccountController extends Controller
 
     public function edit(BankAccount $bankAccount)
     {
-        abort_if($bankAccount->user_id !== auth()->id(), 403);
+        abort_if($bankAccount->user_id !== auth()->user()->tenantUserId(), 403);
 
         return view('bank-accounts.edit', compact('bankAccount'));
     }
 
     public function update(Request $request, BankAccount $bankAccount)
     {
-        abort_if($bankAccount->user_id !== auth()->id(), 403);
+        abort_if($bankAccount->user_id !== auth()->user()->tenantUserId(), 403);
 
         $request->validate([
             'name'           => 'required|string|max:100',
@@ -86,7 +86,7 @@ class BankAccountController extends Controller
 
     public function destroy(BankAccount $bankAccount)
     {
-        abort_if($bankAccount->user_id !== auth()->id(), 403);
+        abort_if($bankAccount->user_id !== auth()->user()->tenantUserId(), 403);
         $bankAccount->delete();
 
         return redirect()->route('bank-accounts.index')
@@ -95,7 +95,7 @@ class BankAccountController extends Controller
 
     public function setDefault(BankAccount $bankAccount)
     {
-        abort_if($bankAccount->user_id !== auth()->id(), 403);
+        abort_if($bankAccount->user_id !== auth()->user()->tenantUserId(), 403);
         $bankAccount->update(['is_default' => true]);
         $this->unsetOtherDefaults($bankAccount->id);
 
@@ -104,7 +104,7 @@ class BankAccountController extends Controller
 
     private function unsetOtherDefaults(int $exceptId): void
     {
-        BankAccount::where('user_id', auth()->id())
+        BankAccount::where('user_id', auth()->user()->tenantUserId())
             ->where('id', '!=', $exceptId)
             ->update(['is_default' => false]);
     }
