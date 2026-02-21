@@ -1,10 +1,8 @@
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
 
     {{-- BRAND --}}
-    <a href="{{ route('dashboard') }}" class="brand-link">
-        <span class="brand-text font-weight-light ml-2">
-            RAMS Finance Solutions
-        </span>
+    <a href="{{ route('dashboard') }}" class="brand-link text-center d-flex align-items-center justify-content-center">
+        <img src="{{ asset('logo-finance.png') }}" alt="Logo" class="brand-logo">
     </a>
 
     {{-- SIDEBAR --}}

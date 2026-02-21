@@ -22,13 +22,13 @@
         :root {
             --accent: #2563eb;
             --accent-2: #22c55e;
-            --sidebar-grad: linear-gradient(180deg, #0f172a 0%, #111827 50%, #0b1224 100%);
+            --sidebar-grad: linear-gradient(180deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%);
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #0f172a;
             --muted: #6b7280;
             --shadow: 0 18px 50px rgba(15,23,42,0.07);
-            --header-bg: rgba(255,255,255,0.9);
+            --header-bg: #ffffff;
         }
         [data-theme="dark"] {
             --bg: #0b1224;
@@ -36,11 +36,14 @@
             --text: #e5e7eb;
             --muted: #9ca3af;
             --shadow: 0 18px 40px rgba(0,0,0,0.55);
-            --header-bg: rgba(17,24,39,0.9);
+            --header-bg: #ffffff;
         }
         body { font-family: 'Manrope', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);}
         .main-sidebar { background: var(--sidebar-grad); }
-        .brand-link { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .brand-link {
+            border-bottom: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.08);
+        }
         .nav-sidebar .nav-link { border-radius: 10px; margin: 4px 8px; }
         .nav-sidebar .nav-link.active { background: var(--accent); color: #fff; box-shadow: 0 8px 18px rgba(37,99,235,0.25); }
         .nav-sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
@@ -52,7 +55,43 @@
         .navbar-light .navbar-nav .nav-link:hover { color: var(--accent); }
         .theme-toggle { border: 1px solid rgba(0,0,0,0.05); border-radius: 999px; padding: 6px 10px; background: var(--card); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
         .theme-toggle i { color: var(--accent); }
-        .brand-logo { width: 34px; height: 34px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.28));
+            animation: logoFloatBlink 3.4s ease-in-out infinite;
+            transition: transform 220ms ease, opacity 220ms ease, filter 220ms ease;
+        }
+        .brand-link:hover .brand-logo {
+            animation-play-state: paused;
+            transform: scale(1.12) rotate(-4deg);
+            opacity: 1;
+            filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.4));
+        }
+        @keyframes logoFloatBlink {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            45% {
+                transform: translateY(-2px) scale(1.03);
+                opacity: 0.9;
+            }
+            55% {
+                transform: translateY(-1px) scale(0.99);
+                opacity: 0.75;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .brand-logo {
+                animation: none;
+                transition: none;
+            }
+        }
         .main-header .dropdown-toggle {
             max-width: 180px;
             overflow: hidden;
@@ -95,6 +134,7 @@
         @media (max-width: 575.98px) {
             .brand-link { justify-content: flex-start !important; padding-left: 0.75rem; }
             .brand-text { font-size: 0.95rem; }
+            .brand-logo { width: 40px; height: 40px; }
             .main-header .dropdown-toggle { max-width: 84px; }
             .theme-toggle { padding: 0.3rem 0.55rem; }
             #themeLabel { display: none; }
@@ -144,10 +184,7 @@
     {{-- ================= SIDEBAR ================= --}}
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('dashboard') }}" class="brand-link text-center d-flex align-items-center justify-content-center">
-            <img src="{{ asset('logo-finance.png') }}" alt="Logo RAMS Finance Solutions" class="brand-logo mr-2">
-            <span class="brand-text font-weight-light">
-                RAMS Finance Solutions
-            </span>
+            <img src="{{ asset('logo-finance.png') }}" alt="Logo" class="brand-logo">
         </a>
 
         <div class="sidebar">
