@@ -210,6 +210,13 @@
                                 <p>Transaksi</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="{{ route('transfers.index') }}"
+                               class="nav-link {{ request()->routeIs('transfers*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-random"></i>
+                                <p>Transfer & Request</p>
+                            </a>
+                        </li>
                     @endif
 
                     @if(auth()->user()->hasPermission('bank_accounts.manage'))

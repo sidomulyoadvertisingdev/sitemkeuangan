@@ -12,6 +12,7 @@ use App\Http\Controllers\InvestmentController;
 use App\Http\Controllers\IuranController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\AccountTransferController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,8 +62,29 @@ Route::middleware(['auth', 'active_account'])->group(function () {
     */
     Route::resource('transactions', TransactionController::class)
         ->middleware('permission:transactions.manage');
+    Route::get('transfers', [AccountTransferController::class, 'index'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.index');
+    Route::post('transfers/direct', [AccountTransferController::class, 'storeDirect'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.direct.store');
+    Route::post('transfers/requests', [AccountTransferController::class, 'storePaymentRequest'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.requests.store');
+    Route::post('transfers/requests/{transfer}/pay', [AccountTransferController::class, 'payPaymentRequest'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.requests.pay');
+    Route::post('transfers/requests/{transfer}/reject', [AccountTransferController::class, 'rejectPaymentRequest'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.requests.reject');
+    Route::post('transfers/requests/{transfer}/cancel', [AccountTransferController::class, 'cancelPaymentRequest'])
+        ->middleware('permission:transactions.manage')
+        ->name('transfers.requests.cancel');
     Route::resource('bank-accounts', BankAccountController::class)
         ->middleware('permission:bank_accounts.manage');
+    Route::post('bank-accounts/transfer-balance', [BankAccountController::class, 'transferBalance'])
+        ->middleware('permission:bank_accounts.manage')
+        ->name('bank-accounts.transfer-balance');
     Route::resource('projects', ProjectController::class)
         ->middleware('permission:projects.manage');
     Route::post('projects/{project}/allocate', [ProjectController::class, 'storeAllocation'])

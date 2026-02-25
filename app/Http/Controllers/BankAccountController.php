@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountTransfer;
 use App\Models\BankAccount;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BankAccountController extends Controller
 {
@@ -91,6 +94,92 @@ class BankAccountController extends Controller
 
         return redirect()->route('bank-accounts.index')
             ->with('success', 'Rekening berhasil dihapus');
+    }
+
+    public function transferBalance(Request $request)
+    {
+        $validated = $request->validate([
+            'from_bank_account_id' => 'required|integer|exists:bank_accounts,id',
+            'to_bank_account_id' => 'required|integer|exists:bank_accounts,id',
+            'amount' => 'required|numeric|min:1',
+            'transfer_date' => 'required|date',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $tenantId = auth()->user()->tenantUserId();
+        $fromAccount = BankAccount::where('user_id', $tenantId)
+            ->where('id', $validated['from_bank_account_id'])
+            ->first();
+        $toAccount = BankAccount::where('user_id', $tenantId)
+            ->where('id', $validated['to_bank_account_id'])
+            ->first();
+
+        if (!$fromAccount) {
+            throw ValidationException::withMessages([
+                'from_bank_account_id' => 'Rekening asal tidak ditemukan.',
+            ]);
+        }
+
+        if (!$toAccount) {
+            throw ValidationException::withMessages([
+                'to_bank_account_id' => 'Rekening tujuan tidak ditemukan.',
+            ]);
+        }
+
+        if ((int) $fromAccount->id === (int) $toAccount->id) {
+            throw ValidationException::withMessages([
+                'to_bank_account_id' => 'Rekening tujuan harus berbeda dari rekening asal.',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated, $tenantId, $fromAccount, $toAccount) {
+            $fromLocked = BankAccount::where('user_id', $tenantId)
+                ->where('id', $fromAccount->id)
+                ->lockForUpdate()
+                ->first();
+            $toLocked = BankAccount::where('user_id', $tenantId)
+                ->where('id', $toAccount->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$fromLocked || !$toLocked) {
+                throw ValidationException::withMessages([
+                    'from_bank_account_id' => 'Rekening tidak valid saat proses pindah saldo.',
+                ]);
+            }
+
+            $amount = (float) $validated['amount'];
+            if ($amount > (float) $fromLocked->balance) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Saldo rekening asal tidak cukup untuk dipindahkan.',
+                ]);
+            }
+
+            $fromLocked->balance -= $amount;
+            $fromLocked->save();
+
+            $toLocked->balance += $amount;
+            $toLocked->save();
+
+            AccountTransfer::create([
+                'sender_user_id' => $tenantId,
+                'receiver_user_id' => $tenantId,
+                'sender_bank_account_id' => (int) $fromLocked->id,
+                'receiver_bank_account_id' => (int) $toLocked->id,
+                'kind' => AccountTransfer::KIND_DIRECT_TRANSFER,
+                'status' => AccountTransfer::STATUS_COMPLETED,
+                'amount' => $amount,
+                'transfer_date' => $validated['transfer_date'],
+                'note' => $validated['note'] ?? null,
+                'requested_by_user_id' => auth()->id(),
+                'processed_by_user_id' => auth()->id(),
+                'processed_at' => now(),
+            ]);
+        });
+
+        return redirect()
+            ->route('bank-accounts.index')
+            ->with('success', 'Pindah saldo antar rekening berhasil.');
     }
 
     public function setDefault(BankAccount $bankAccount)

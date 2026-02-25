@@ -137,6 +137,10 @@ class ReportController extends Controller
         }
 
         $note = strtolower((string) $transaction->note);
+        if ($note !== '' && str_contains($note, '[transfer]')) {
+            return 'Transfer Antar Organisasi';
+        }
+
         if ($note !== '' && str_contains($note, 'iuran')) {
             return 'Iuran Pemuda';
         }

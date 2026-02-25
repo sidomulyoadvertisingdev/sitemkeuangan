@@ -12,9 +12,66 @@
     </div>
 
     <div class="card-body">
+        @if($errors->any())
+            <div class="alert alert-danger">
+                <ul class="mb-0 pl-3">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
+
+        <div class="border rounded p-3 mb-4">
+            <h6 class="mb-3">Pindah Saldo Antar Rekening</h6>
+            <form method="POST" action="{{ route('bank-accounts.transfer-balance') }}">
+                @csrf
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label>Rekening Asal</label>
+                        <select name="from_bank_account_id" class="form-control" required>
+                            <option value="">-- Pilih asal --</option>
+                            @foreach($accounts as $acc)
+                                <option value="{{ $acc->id }}" {{ (string) old('from_bank_account_id') === (string) $acc->id ? 'selected' : '' }}>
+                                    {{ $acc->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Rekening Tujuan</label>
+                        <select name="to_bank_account_id" class="form-control" required>
+                            <option value="">-- Pilih tujuan --</option>
+                            @foreach($accounts as $acc)
+                                <option value="{{ $acc->id }}" {{ (string) old('to_bank_account_id') === (string) $acc->id ? 'selected' : '' }}>
+                                    {{ $acc->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label>Nominal</label>
+                        <input type="number" name="amount" min="1" class="form-control" value="{{ old('amount') }}" required>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label>Tanggal</label>
+                        <input type="date" name="transfer_date" class="form-control" value="{{ old('transfer_date', now()->toDateString()) }}" required>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-info btn-block">Pindah Saldo</button>
+                    </div>
+                </div>
+                <div class="form-group mb-0">
+                    <label>Catatan (opsional)</label>
+                    <input type="text" name="note" class="form-control" value="{{ old('note') }}" placeholder="Contoh: pindah saldo dari penampung B ke A">
+                </div>
+            </form>
+        </div>
 
         <table class="table table-bordered table-striped">
             <thead>
