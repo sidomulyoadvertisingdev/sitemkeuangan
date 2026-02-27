@@ -31,6 +31,26 @@
                        required>
             </div>
 
+            <div class="form-group">
+                <label>Mode Akun</label>
+                @if($canEditAccountMode)
+                    <select name="account_mode" class="form-control" required>
+                        @foreach($modeOptions as $modeKey => $modeLabel)
+                            <option value="{{ $modeKey }}" {{ old('account_mode', $defaultAccountMode) === $modeKey ? 'selected' : '' }}>
+                                {{ $modeLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+                @else
+                    <input type="hidden" name="account_mode" value="{{ $defaultAccountMode }}">
+                    <input type="text"
+                           class="form-control"
+                           value="{{ $modeOptions[$defaultAccountMode] ?? 'Organizational Finance' }}"
+                           readonly>
+                    <small class="text-muted">Mode akun mengikuti mode akun admin yang sedang login.</small>
+                @endif
+            </div>
+
             <div class="form-group" id="accessOrgBox">
                 <label>Akses Data Perkumpulan</label>
                 @if($canChooseAccessOrganization)

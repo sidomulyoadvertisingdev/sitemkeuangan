@@ -149,6 +149,10 @@
 
 <body class="hold-transition sidebar-mini layout-fixed" data-theme="light">
 <div class="wrapper">
+    @php
+        $isCooperativeMode = auth()->user()->isCooperativeMode();
+        $homeRoute = $isCooperativeMode ? route('koperasi.dashboard') : route('dashboard');
+    @endphp
 
     {{-- ================= NAVBAR ================= --}}
     <nav class="main-header navbar navbar-expand navbar-white navbar-light">
@@ -171,6 +175,10 @@
                     {{ auth()->user()->name }}
                 </a>
                 <div class="dropdown-menu dropdown-menu-right">
+                    <span class="dropdown-item-text text-muted small">
+                        Mode: {{ $isCooperativeMode ? 'Cooperative Finance' : 'Organizational Finance' }}
+                    </span>
+                    <div class="dropdown-divider"></div>
                     <a class="dropdown-item text-danger"
                        href="{{ route('logout') }}"
                        onclick="event.preventDefault();document.getElementById('logout-form').submit();">
@@ -183,7 +191,7 @@
 
     {{-- ================= SIDEBAR ================= --}}
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="{{ route('dashboard') }}" class="brand-link text-center d-flex align-items-center justify-content-center">
+        <a href="{{ $homeRoute }}" class="brand-link text-center d-flex align-items-center justify-content-center">
             <img src="{{ asset('logo-finance.png') }}" alt="Logo" class="brand-logo">
         </a>
 
@@ -195,14 +203,14 @@
                     data-accordion="false">
 
                     <li class="nav-item">
-                        <a href="{{ route('dashboard') }}"
-                           class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <a href="{{ $homeRoute }}"
+                           class="nav-link {{ $isCooperativeMode ? (request()->routeIs('koperasi.dashboard') ? 'active' : '') : (request()->routeIs('dashboard') ? 'active' : '') }}">
                             <i class="nav-icon fas fa-home"></i>
                             <p>Dashboard</p>
                         </a>
                     </li>
 
-                    @if(auth()->user()->hasPermission('transactions.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('transactions.manage'))
                         <li class="nav-item">
                             <a href="{{ route('transactions.index') }}"
                                class="nav-link {{ request()->routeIs('transactions*') ? 'active' : '' }}">
@@ -219,7 +227,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('bank_accounts.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('bank_accounts.manage'))
                         <li class="nav-item">
                             <a href="{{ route('bank-accounts.index') }}"
                                class="nav-link {{ request()->routeIs('bank-accounts*') ? 'active' : '' }}">
@@ -229,7 +237,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('projects.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('projects.manage'))
                         <li class="nav-item">
                             <a href="{{ route('projects.index') }}"
                                class="nav-link {{ request()->routeIs('projects*') ? 'active' : '' }}">
@@ -239,7 +247,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('investments.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('investments.manage'))
                         <li class="nav-item">
                             <a href="{{ route('investments.index') }}"
                                class="nav-link {{ request()->routeIs('investments*') ? 'active' : '' }}">
@@ -249,7 +257,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('budgets.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('budgets.manage'))
                         <li class="nav-item">
                             <a href="{{ route('budgets.index') }}"
                                class="nav-link {{ request()->routeIs('budgets*') ? 'active' : '' }}">
@@ -259,7 +267,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('debts.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('debts.manage'))
                         <li class="nav-item">
                             <a href="{{ route('debts.index') }}"
                                class="nav-link {{ request()->routeIs('debts*') ? 'active' : '' }}">
@@ -269,7 +277,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('iuran.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('iuran.manage'))
                         <li class="nav-item">
                             <a href="{{ route('iuran.index') }}"
                                class="nav-link {{ request()->routeIs('iuran*') ? 'active' : '' }}">
@@ -279,7 +287,65 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('reports.view'))
+                    @if($isCooperativeMode && auth()->user()->hasPermission('koperasi.manage'))
+                        @php
+                            $activeMenu = request()->routeIs('koperasi.transactions') ? (string) request()->route('menu') : '';
+                        @endphp
+                        <li class="nav-item">
+                            <a href="{{ route('profile.edit') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user"></i>
+                                <p>My Profile</p>
+                            </a>
+                        </li>
+                        <li class="nav-item has-treeview {{ request()->routeIs('koperasi.transactions') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->routeIs('koperasi.transactions') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-exchange-alt"></i>
+                                <p>
+                                    Transaction
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.transactions', ['menu' => 'simpan']) }}"
+                                       class="nav-link {{ $activeMenu === 'simpan' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Simpan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.transactions', ['menu' => 'pinjam']) }}"
+                                       class="nav-link {{ $activeMenu === 'pinjam' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Pinjam</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.transactions', ['menu' => 'withdraw']) }}"
+                                       class="nav-link {{ $activeMenu === 'withdraw' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Withdraw</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.transactions', ['menu' => 'angsuran']) }}"
+                                       class="nav-link {{ $activeMenu === 'angsuran' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Angsuran</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.transactions', ['menu' => 'bagi-hasil']) }}"
+                                       class="nav-link {{ $activeMenu === 'bagi-hasil' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Bagi Hasil</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    @endif
+
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('reports.view'))
                         <li class="nav-item">
                             <a href="{{ route('reports.index') }}"
                                class="nav-link {{ request()->routeIs('reports*') ? 'active' : '' }}">
@@ -289,7 +355,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->hasPermission('users.manage'))
+                    @if(!$isCooperativeMode && auth()->user()->hasPermission('users.manage'))
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}"
                                class="nav-link {{ request()->routeIs('users*') ? 'active' : '' }}">

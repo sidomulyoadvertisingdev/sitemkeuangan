@@ -30,6 +30,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'login_mode' => ['nullable', 'string', 'in:organization,cooperative'],
         ];
     }
 
@@ -54,6 +55,21 @@ class LoginRequest extends FormRequest
             $reason = $user->banned_reason ? ' Alasan: ' . $user->banned_reason : '';
             throw ValidationException::withMessages([
                 'email' => 'Akun Anda telah diblokir admin.' . $reason,
+            ]);
+        }
+
+        $requestedMode = $this->string('login_mode')->toString();
+        if ($requestedMode === '') {
+            $requestedMode = User::MODE_ORGANIZATION;
+            $this->merge(['login_mode' => $requestedMode]);
+        }
+
+        if ($user && $user->account_mode !== $requestedMode) {
+            $targetLabel = $requestedMode === User::MODE_COOPERATIVE ? 'Cooperative Finance' : 'Organizational Finance';
+            $userLabel = $user->isCooperativeMode() ? 'Cooperative Finance' : 'Organizational Finance';
+
+            throw ValidationException::withMessages([
+                'email' => "Akun ini terdaftar untuk {$userLabel}. Silakan login melalui menu {$userLabel} (bukan {$targetLabel}).",
             ]);
         }
 

@@ -27,6 +27,25 @@
                 <input type="text" name="organization_name" class="form-control" value="{{ old('organization_name', $user->organization_name) }}" required>
             </div>
 
+            <div class="form-group">
+                <label>Mode Akun</label>
+                @if($canEditAccountMode)
+                    <select name="account_mode" class="form-control" required>
+                        @foreach($modeOptions as $modeKey => $modeLabel)
+                            <option value="{{ $modeKey }}" {{ old('account_mode', $user->account_mode) === $modeKey ? 'selected' : '' }}>
+                                {{ $modeLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+                @else
+                    <input type="hidden" name="account_mode" value="{{ old('account_mode', $user->account_mode) }}">
+                    <input type="text"
+                           class="form-control"
+                           value="{{ $modeOptions[old('account_mode', $user->account_mode)] ?? 'Organizational Finance' }}"
+                           readonly>
+                @endif
+            </div>
+
             <div class="form-group" id="accessOrgBox">
                 <label>Akses Data Perkumpulan</label>
                 @php

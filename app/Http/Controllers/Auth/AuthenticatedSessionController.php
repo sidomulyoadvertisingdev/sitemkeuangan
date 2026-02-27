@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,9 +15,14 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        $mode = (string) $request->query('mode', User::MODE_ORGANIZATION);
+        if (!in_array($mode, [User::MODE_ORGANIZATION, User::MODE_COOPERATIVE], true)) {
+            $mode = User::MODE_ORGANIZATION;
+        }
+
+        return view('auth.login', compact('mode'));
     }
 
     /**
@@ -28,7 +34,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $targetRoute = auth()->user()?->isCooperativeMode()
+            ? 'koperasi.dashboard'
+            : 'dashboard';
+
+        return redirect()->intended(route($targetRoute, absolute: false));
     }
 
     /**

@@ -43,20 +43,26 @@ class UserManagementController extends Controller
         return view('users.index', compact('users', 'q', 'status', 'permissionOptions', 'statusOptions'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $permissionOptions = $this->permissionOptionsForManagedUsers();
         $accessOrganizations = $this->accessOrganizationOptions();
         $canChooseAccessOrganization = auth()->user()->is_platform_admin;
         $canManageInviteQuota = $canChooseAccessOrganization;
         $currentAccessOrganization = $this->resolveAccessOrganization(auth()->user()->tenantUserId());
+        $modeOptions = User::modeOptions();
+        $defaultAccountMode = $this->resolveManagedAccountMode($request->query('account_mode'));
+        $canEditAccountMode = auth()->user()->is_platform_admin;
 
         return view('users.create', compact(
             'permissionOptions',
             'accessOrganizations',
             'canChooseAccessOrganization',
             'canManageInviteQuota',
-            'currentAccessOrganization'
+            'currentAccessOrganization',
+            'modeOptions',
+            'defaultAccountMode',
+            'canEditAccountMode'
         ));
     }
 
@@ -69,6 +75,7 @@ class UserManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'organization_name' => 'required|string|max:150',
+            'account_mode' => 'nullable|string|in:organization,cooperative',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'is_admin' => 'nullable|boolean',
@@ -83,6 +90,7 @@ class UserManagementController extends Controller
         $inviteQuota = $this->sanitizeInviteQuota($validated['invite_quota'] ?? null);
         $permissions = $this->sanitizePermissions($validated['permissions'] ?? [], $permissionKeys);
         $selectedDataOwnerId = $validated['data_owner_user_id'] ?? null;
+        $accountMode = $this->resolveManagedAccountMode($validated['account_mode'] ?? null);
 
         if (!$isPlatformAdmin) {
             $selectedDataOwnerId = $actor->tenantUserId();
@@ -96,7 +104,7 @@ class UserManagementController extends Controller
 
         $dataOwner = null;
         if (!$isOwnerCreation) {
-            $dataOwner = $this->resolveAccessOrganization($selectedDataOwnerId);
+            $dataOwner = $this->resolveAccessOrganization($selectedDataOwnerId, $accountMode);
             if (!$dataOwner) {
                 return back()->withInput()->withErrors([
                     'data_owner_user_id' => 'Pilih perkumpulan yang valid untuk akses user.',
@@ -113,6 +121,7 @@ class UserManagementController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'organization_name' => $organizationName,
+            'account_mode' => $accountMode,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'is_admin' => $isAdmin,
@@ -148,6 +157,8 @@ class UserManagementController extends Controller
             && $user->is_admin
             && (int) $user->data_owner_user_id === (int) $user->id;
         $currentAccessOrganization = $this->resolveAccessOrganization(auth()->user()->tenantUserId());
+        $modeOptions = User::modeOptions();
+        $canEditAccountMode = auth()->user()->is_platform_admin && !$user->is_platform_admin;
 
         return view('users.edit', compact(
             'user',
@@ -155,7 +166,9 @@ class UserManagementController extends Controller
             'accessOrganizations',
             'canChooseAccessOrganization',
             'canManageInviteQuota',
-            'currentAccessOrganization'
+            'currentAccessOrganization',
+            'modeOptions',
+            'canEditAccountMode'
         ));
     }
 
@@ -170,6 +183,7 @@ class UserManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'organization_name' => 'required|string|max:150',
+            'account_mode' => 'nullable|string|in:organization,cooperative',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8|confirmed',
             'is_admin' => 'nullable|boolean',
@@ -183,6 +197,7 @@ class UserManagementController extends Controller
         $inviteQuota = $this->sanitizeInviteQuota($validated['invite_quota'] ?? null);
         $permissions = $this->sanitizePermissions($validated['permissions'] ?? [], $permissionKeys);
         $selectedDataOwnerId = $validated['data_owner_user_id'] ?? null;
+        $accountMode = $this->resolveManagedAccountMode($validated['account_mode'] ?? $user->account_mode);
 
         if (!$isPlatformAdmin) {
             $selectedDataOwnerId = $actor->tenantUserId();
@@ -196,7 +211,7 @@ class UserManagementController extends Controller
 
         $dataOwner = null;
         if (!$isAdmin || !$isPlatformAdmin) {
-            $dataOwner = $this->resolveAccessOrganization($selectedDataOwnerId);
+            $dataOwner = $this->resolveAccessOrganization($selectedDataOwnerId, $accountMode);
             if (!$dataOwner) {
                 return back()->withInput()->withErrors([
                     'data_owner_user_id' => 'Pilih perkumpulan yang valid untuk akses user.',
@@ -207,6 +222,7 @@ class UserManagementController extends Controller
         if ($user->is_platform_admin) {
             $isAdmin = true;
             $permissions = [];
+            $accountMode = $user->account_mode;
         }
 
         $isOwnerAccount = $isAdmin && $isPlatformAdmin;
@@ -225,6 +241,7 @@ class UserManagementController extends Controller
         $data = [
             'name' => $validated['name'],
             'organization_name' => $organizationName,
+            'account_mode' => $accountMode,
             'email' => $validated['email'],
             'is_admin' => $isAdmin,
             'permissions' => $isAdmin ? null : $permissions,
@@ -387,13 +404,14 @@ class UserManagementController extends Controller
             ->where('account_status', User::STATUS_APPROVED)
             ->when(!$actor->is_platform_admin, function ($query) use ($actor) {
                 $query->where('id', $actor->tenantUserId());
+                $query->where('account_mode', $actor->account_mode);
             })
             ->orderBy('organization_name')
             ->orderBy('name')
             ->get(['id', 'name', 'organization_name']);
     }
 
-    private function resolveAccessOrganization(?int $id): ?User
+    private function resolveAccessOrganization(?int $id, ?string $mode = null): ?User
     {
         if (!$id) {
             return null;
@@ -406,10 +424,29 @@ class UserManagementController extends Controller
             ->where('is_platform_admin', false)
             ->where('is_admin', true)
             ->where('account_status', User::STATUS_APPROVED)
+            ->when($mode !== null, function ($query) use ($mode) {
+                $query->where('account_mode', $mode);
+            })
             ->when(!$actor->is_platform_admin, function ($query) use ($actor) {
                 $query->where('id', $actor->tenantUserId());
+                $query->where('account_mode', $actor->account_mode);
             })
             ->first();
+    }
+
+    private function resolveManagedAccountMode(?string $requestedMode): string
+    {
+        $actor = auth()->user();
+        if (!$actor->is_platform_admin) {
+            return (string) ($actor->account_mode ?: User::MODE_ORGANIZATION);
+        }
+
+        $mode = (string) ($requestedMode ?: User::MODE_ORGANIZATION);
+        if (!in_array($mode, [User::MODE_ORGANIZATION, User::MODE_COOPERATIVE], true)) {
+            return User::MODE_ORGANIZATION;
+        }
+
+        return $mode;
     }
 
     private function managedUsersQuery(): Builder

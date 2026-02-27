@@ -9,6 +9,9 @@ class User extends Authenticatable
 {
     use Notifiable;
 
+    public const MODE_ORGANIZATION = 'organization';
+    public const MODE_COOPERATIVE = 'cooperative';
+
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_BANNED = 'banned';
@@ -22,6 +25,7 @@ class User extends Authenticatable
         'debts.manage' => 'Kelola Hutang & Piutang',
         'iuran.manage' => 'Kelola Iuran',
         'iuran.import' => 'Import / Export Iuran',
+        'koperasi.manage' => 'Kelola Koperasi Simpan Pinjam',
         'reports.view' => 'Lihat Laporan Lengkap',
         'users.manage' => 'Kontrol Pengguna',
     ];
@@ -29,6 +33,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'organization_name',
+        'account_mode',
         'email',
         'google_id',
         'google_linked_at',
@@ -63,6 +68,24 @@ class User extends Authenticatable
     public static function permissionOptions(): array
     {
         return self::PERMISSIONS;
+    }
+
+    public static function modeOptions(): array
+    {
+        return [
+            self::MODE_ORGANIZATION => 'Organizational Finance',
+            self::MODE_COOPERATIVE => 'Cooperative Finance',
+        ];
+    }
+
+    public function isOrganizationMode(): bool
+    {
+        return $this->account_mode === self::MODE_ORGANIZATION;
+    }
+
+    public function isCooperativeMode(): bool
+    {
+        return $this->account_mode === self::MODE_COOPERATIVE;
     }
 
     public function hasPermission(string $permission): bool

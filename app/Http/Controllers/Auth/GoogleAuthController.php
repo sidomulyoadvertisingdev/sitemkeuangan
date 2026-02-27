@@ -14,12 +14,17 @@ class GoogleAuthController extends Controller
 {
     public function redirect(Request $request): RedirectResponse
     {
+        $mode = (string) $request->query('mode', User::MODE_ORGANIZATION);
+        if (!in_array($mode, [User::MODE_ORGANIZATION, User::MODE_COOPERATIVE], true)) {
+            $mode = User::MODE_ORGANIZATION;
+        }
+
         $clientId = (string) config('services.google.client_id');
         $redirectUri = (string) config('services.google.redirect');
 
         if ($clientId === '' || $redirectUri === '') {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $mode])
                 ->withErrors([
                     'email' => 'Konfigurasi login Google belum lengkap. Hubungi admin.',
                 ]);
@@ -27,6 +32,7 @@ class GoogleAuthController extends Controller
 
         $state = Str::random(40);
         $request->session()->put('google_oauth_state', $state);
+        $request->session()->put('google_login_mode', $mode);
 
         $query = http_build_query([
             'client_id' => $clientId,
@@ -42,25 +48,30 @@ class GoogleAuthController extends Controller
 
     public function callback(Request $request): RedirectResponse
     {
+        $requestedMode = (string) $request->session()->pull('google_login_mode', User::MODE_ORGANIZATION);
+        if (!in_array($requestedMode, [User::MODE_ORGANIZATION, User::MODE_COOPERATIVE], true)) {
+            $requestedMode = User::MODE_ORGANIZATION;
+        }
+
         $expectedState = (string) $request->session()->pull('google_oauth_state', '');
         $providedState = (string) $request->query('state', '');
 
         if ($expectedState === '' || !hash_equals($expectedState, $providedState)) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Sesi login Google tidak valid. Coba lagi.']);
         }
 
         if ($request->has('error')) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Login Google dibatalkan atau gagal.']);
         }
 
         $code = (string) $request->query('code', '');
         if ($code === '') {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Kode otorisasi Google tidak ditemukan.']);
         }
 
@@ -76,7 +87,7 @@ class GoogleAuthController extends Controller
 
         if (!$tokenResponse->ok()) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Gagal mengambil token Google.']);
         }
 
@@ -86,7 +97,7 @@ class GoogleAuthController extends Controller
         $googleProfile = $this->fetchGoogleProfile($idToken, $accessToken);
         if ($googleProfile === null) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Profil Google tidak dapat diverifikasi.']);
         }
 
@@ -96,15 +107,22 @@ class GoogleAuthController extends Controller
 
         if ($email === '' || $googleId === '' || !$emailVerified) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Email Google belum terverifikasi.']);
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
         if (!$user) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Email Google belum terdaftar di sistem ini.']);
+        }
+
+        if ($user->account_mode !== $requestedMode) {
+            $userLabel = $user->isCooperativeMode() ? 'Cooperative Finance' : 'Organizational Finance';
+            return redirect()
+                ->route('login', ['mode' => $requestedMode])
+                ->withErrors(['email' => "Akun ini terdaftar untuk {$userLabel}. Silakan login dari menu yang sesuai."]);
         }
 
         $googleAlreadyLinked = User::where('google_id', $googleId)
@@ -112,20 +130,20 @@ class GoogleAuthController extends Controller
             ->exists();
         if ($googleAlreadyLinked) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Akun Google ini sudah terhubung ke user lain.']);
         }
 
         if ($user->isPendingApproval()) {
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Akun Anda masih menunggu persetujuan admin.']);
         }
 
         if ($user->isBanned()) {
             $reason = $user->banned_reason ? ' Alasan: ' . $user->banned_reason : '';
             return redirect()
-                ->route('login')
+                ->route('login', ['mode' => $requestedMode])
                 ->withErrors(['email' => 'Akun Anda diblokir admin.' . $reason]);
         }
 
@@ -137,7 +155,11 @@ class GoogleAuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $targetRoute = $user->isCooperativeMode()
+            ? 'koperasi.dashboard'
+            : 'dashboard';
+
+        return redirect()->intended(route($targetRoute, absolute: false));
     }
 
     private function fetchGoogleProfile(string $idToken, string $accessToken): ?array

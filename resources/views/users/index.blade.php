@@ -49,6 +49,7 @@
                     <tr>
                         <th>Nama</th>
                         <th>Perkumpulan</th>
+                        <th>Mode</th>
                         <th>Akses Data</th>
                         <th>Email</th>
                         <th>Role</th>
@@ -63,6 +64,11 @@
                         <tr>
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->organization_name ?? '-' }}</td>
+                            <td>
+                                <span class="badge {{ $user->account_mode === 'cooperative' ? 'badge-info' : 'badge-primary' }}">
+                                    {{ $user->account_mode === 'cooperative' ? 'Cooperative' : 'Organization' }}
+                                </span>
+                            </td>
                             <td>
                                 @if($user->is_platform_admin)
                                     Semua Perkumpulan
@@ -167,7 +173,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center">Belum ada data user</td>
+                            <td colspan="10" class="text-center">Belum ada data user</td>
                         </tr>
                     @endforelse
                 </tbody>

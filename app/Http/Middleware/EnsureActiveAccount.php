@@ -30,7 +30,7 @@ class EnsureActiveAccount
             : 'Akun Anda masih menunggu persetujuan admin.';
 
         return redirect()
-            ->route('login')
+            ->route('login', ['mode' => $user->account_mode])
             ->withErrors(['email' => $message]);
     }
 }
