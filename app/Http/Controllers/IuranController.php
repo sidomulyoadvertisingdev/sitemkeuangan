@@ -7,17 +7,29 @@ use App\Models\Category;
 use App\Models\IuranInstallment;
 use App\Models\IuranMember;
 use App\Models\Transaction;
+use App\Services\IuranTargetSynchronizer;
+use App\Services\OfficerWalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class IuranController extends Controller
 {
+    public function __construct(
+        private IuranTargetSynchronizer $iuranTargetSynchronizer,
+        private OfficerWalletService $officerWalletService
+    )
+    {
+    }
+
     public function index(Request $request)
     {
+        $tenantId = auth()->user()->tenantUserId();
+        $this->iuranTargetSynchronizer->syncForTenant((int) $tenantId);
+
         $q = trim((string) $request->query('q', ''));
 
         $members = IuranMember::withSum('installments as paid_amount', 'amount')
-            ->where('user_id', auth()->user()->tenantUserId())
+            ->where('user_id', $tenantId)
             ->when($q !== '', function ($query) use ($q) {
                 $query->where('name', 'like', '%' . $q . '%');
             })
@@ -73,6 +85,8 @@ class IuranController extends Controller
     public function show(IuranMember $iuran)
     {
         abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
+        $this->iuranTargetSynchronizer->syncForTenant((int) $iuran->user_id, [(int) $iuran->id]);
+        $iuran->refresh();
 
         $iuran->load([
             'installments' => function ($query) {
@@ -88,7 +102,12 @@ class IuranController extends Controller
             ? min(100, round(($paid / $iuran->target_amount) * 100))
             : 0;
 
-        $accounts = BankAccount::where('user_id', auth()->user()->tenantUserId())->get();
+        $actor = auth()->user();
+        if ($this->officerWalletService->isRestrictedOfficer($actor)) {
+            $accounts = collect([$this->officerWalletService->resolveForUser($actor)]);
+        } else {
+            $accounts = BankAccount::where('user_id', $actor->tenantUserId())->get();
+        }
         $categories = Category::where('user_id', auth()->user()->tenantUserId())
             ->where('type', 'income')
             ->orderBy('name')
@@ -143,18 +162,27 @@ class IuranController extends Controller
     public function storeInstallment(Request $request, IuranMember $iuran)
     {
         abort_if($iuran->user_id !== auth()->user()->tenantUserId(), 403);
+        $this->iuranTargetSynchronizer->syncForTenant((int) $iuran->user_id, [(int) $iuran->id]);
+        $iuran->refresh();
+
+        $actor = auth()->user();
+        $isRestrictedOfficer = $this->officerWalletService->isRestrictedOfficer($actor);
 
         $request->validate([
             'amount' => 'required|numeric|min:1',
             'paid_at' => 'required|date',
-            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'bank_account_id' => $isRestrictedOfficer ? 'nullable|exists:bank_accounts,id' : 'required|exists:bank_accounts,id',
             'category_id' => 'required|exists:categories,id',
             'note' => 'nullable|string',
         ]);
 
-        $bank = BankAccount::where('id', $request->bank_account_id)
-            ->where('user_id', auth()->user()->tenantUserId())
-            ->firstOrFail();
+        if ($isRestrictedOfficer) {
+            $bank = $this->officerWalletService->resolveForUser($actor);
+        } else {
+            $bank = BankAccount::where('id', $request->bank_account_id)
+                ->where('user_id', $actor->tenantUserId())
+                ->firstOrFail();
+        }
 
         $category = Category::where('id', $request->category_id)
             ->where('user_id', auth()->user()->tenantUserId())
@@ -562,6 +590,8 @@ class IuranController extends Controller
             'iuran_member_id' => $iuran->id,
             'bank_account_id' => $bank->id,
             'category_id' => $category->id,
+            'officer_user_id' => auth()->id(),
+            'project_id' => null,
             'amount' => $amount,
             'paid_at' => $paidAt,
             'note' => $note,

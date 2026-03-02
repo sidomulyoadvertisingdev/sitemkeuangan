@@ -14,6 +14,7 @@ use App\Http\Controllers\KoperasiController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\AccountTransferController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ProfileController;
 
 /*
@@ -57,6 +58,9 @@ Route::middleware(['auth', 'active_account'])->group(function () {
         */
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('dashboard');
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])
+            ->middleware('permission:transactions.manage')
+            ->name('activity-logs.index');
 
         Route::get('/reports', [ReportController::class, 'index'])
             ->middleware('permission:reports.view')
@@ -103,6 +107,15 @@ Route::middleware(['auth', 'active_account'])->group(function () {
         Route::post('projects/{project}/expenses', [ProjectController::class, 'storeExpense'])
             ->middleware('permission:projects.manage')
             ->name('projects.expenses.store');
+        Route::post('projects/{project}/iuran-assignments', [ProjectController::class, 'storeIuranAssignment'])
+            ->middleware('permission:projects.manage')
+            ->name('projects.iuran-assignments.store');
+        Route::post('projects/{project}/iuran-plan', [ProjectController::class, 'updateIuranPlan'])
+            ->middleware('permission:projects.manage')
+            ->name('projects.iuran-plan.update');
+        Route::delete('projects/{project}/iuran-assignments/{assignment}', [ProjectController::class, 'destroyIuranAssignment'])
+            ->middleware('permission:projects.manage')
+            ->name('projects.iuran-assignments.destroy');
 
         /*
         |----------------------------------------------------------------------

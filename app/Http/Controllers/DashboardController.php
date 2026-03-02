@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Transaction;
 use App\Models\Debt;
 use App\Models\Budget;
@@ -235,6 +236,12 @@ class DashboardController extends Controller
                 return $budget;
             });
 
+        $recentActivities = ActivityLog::with('actor:id,name,email')
+            ->where('tenant_user_id', $userId)
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return view('dashboard.index', compact(
             'saldo',
             'income',
@@ -261,7 +268,8 @@ class DashboardController extends Controller
             'expenses',
             'categoryExpense',
             'budgets',
-            'projects'
+            'projects',
+            'recentActivities'
         ));
     }
 }

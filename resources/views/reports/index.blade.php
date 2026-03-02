@@ -300,6 +300,45 @@
 </div>
 
 <div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <strong>Performa Petugas Penarikan Iuran</strong>
+        <span class="text-muted small">Total Iuran Periode: Rp {{ number_format($totalIuranCollected, 0, ',', '.') }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th width="60">#</th>
+                        <th>Nama Petugas</th>
+                        <th class="text-right">Total Penarikan</th>
+                        <th class="text-right">Jumlah Cicilan</th>
+                        <th class="text-right">Anggota Tertagih</th>
+                        <th class="text-right">Rata-rata / Cicilan</th>
+                        <th class="text-right">Kontribusi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($iuranByOfficer as $index => $row)
+                        <tr>
+                            <td>{{ $index + 1 }}</td>
+                            <td>{{ $row['officer_name'] }}</td>
+                            <td class="text-right">Rp {{ number_format($row['total_amount'], 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($row['installment_count'], 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($row['member_count'], 0, ',', '.') }}</td>
+                            <td class="text-right">Rp {{ number_format($row['average_amount'], 0, ',', '.') }}</td>
+                            <td class="text-right">{{ $row['contribution_percent'] }}%</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="text-center text-muted">Belum ada data penarikan iuran pada periode ini</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
     <div class="card-header">
         <strong>Detail Transaksi Periode {{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }} s/d {{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }}</strong>
     </div>

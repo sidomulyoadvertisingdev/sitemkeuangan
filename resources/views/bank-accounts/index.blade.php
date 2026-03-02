@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Rekening Bank')
+@section('title', 'Dompet & Rekening')
 
 @section('content')
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Rekening Bank</h5>
+        <h5 class="mb-0">Dompet & Rekening</h5>
         <a href="{{ route('bank-accounts.create') }}" class="btn btn-primary btn-sm">
             <i class="fas fa-plus"></i> Tambah
         </a>
@@ -77,6 +77,7 @@
             <thead>
                 <tr>
                     <th>Nama</th>
+                    <th>Jenis</th>
                     <th>Bank</th>
                     <th>No. Rekening</th>
                     <th>Saldo</th>
@@ -88,6 +89,13 @@
                 @forelse($accounts as $acc)
                 <tr>
                     <td>{{ $acc->name }}</td>
+                    <td>
+                        @if((string) ($acc->account_kind ?? '') === \App\Models\BankAccount::KIND_OFFICER_WALLET)
+                            <span class="badge badge-info">Dompet Petugas</span>
+                        @else
+                            <span class="badge badge-secondary">Rekening Umum</span>
+                        @endif
+                    </td>
                     <td>{{ $acc->bank_name ?? '-' }}</td>
                     <td>{{ $acc->account_number ?? '-' }}</td>
                     <td>Rp {{ number_format($acc->balance, 0, ',', '.') }}</td>
@@ -121,7 +129,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="text-center">Belum ada rekening</td></tr>
+                <tr><td colspan="7" class="text-center">Belum ada rekening</td></tr>
                 @endforelse
             </tbody>
         </table>

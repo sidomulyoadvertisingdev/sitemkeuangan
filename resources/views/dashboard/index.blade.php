@@ -106,6 +106,66 @@
 
 </div>
 
+{{-- ================= AKTIVITAS TERBARU ================= --}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-outline card-primary">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-history mr-1"></i>
+                        Aktivitas Terbaru Pengguna
+                    </h3>
+                    <a href="{{ route('activity-logs.index') }}" class="btn btn-sm btn-outline-primary">
+                        Log Aktivitas Selengkapnya
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if($recentActivities->isEmpty())
+                    <p class="text-center text-muted p-3 mb-0">
+                        Belum ada aktivitas transaksi tercatat.
+                    </p>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                        <th width="180">Tanggal & Jam</th>
+                                        <th width="180">User</th>
+                                        <th width="100">Aksi</th>
+                                        <th>Aktivitas</th>
+                                    </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($recentActivities as $activity)
+                                    @php
+                                        $badgeClass = match($activity->action) {
+                                            'created' => 'badge-success',
+                                            'updated' => 'badge-warning',
+                                            'deleted' => 'badge-danger',
+                                            default => 'badge-secondary',
+                                        };
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $activity->created_at?->format('d-m-Y H:i:s') }}</td>
+                                        <td>{{ $activity->actor?->name ?? 'Sistem' }}</td>
+                                        <td><span class="badge {{ $badgeClass }}">{{ strtoupper($activity->action) }}</span></td>
+                                        <td>{{ $activity->description }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-2 text-right text-muted small">
+                        Menampilkan 10 log terbaru.
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ================= REMINDER BUDGET ================= --}}
 <div class="row mb-4">
     <div class="col-12">
@@ -457,7 +517,7 @@
             plugins: {
                 legend: { position: 'bottom' },
                 tooltip: { callbacks: {
-                    label: function(ctx){ return ctx.label + ': Rp ' + ctx.parsed.toLocaleString('id-ID'); }
+                    label: function(ctx){ return ctx.label + ': Rp ' + ctx.parsed.toLocaleString('id-ID', { maximumFractionDigits: 0 }); }
                 }}
             }
         }

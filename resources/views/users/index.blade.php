@@ -80,9 +80,23 @@
                             </td>
                             <td>{{ $user->email }}</td>
                             <td>
-                                <span class="badge {{ $user->is_platform_admin ? 'badge-dark' : ($user->is_admin ? 'badge-success' : 'badge-secondary') }}">
-                                    {{ $user->is_platform_admin ? 'Platform Admin' : ($user->is_admin ? 'Super Admin' : 'User') }}
-                                </span>
+                                @php
+                                    $userPermissions = $user->permissions ?? [];
+                                    if ($user->is_platform_admin) {
+                                        $roleLabel = 'Platform Admin';
+                                        $roleBadge = 'badge-dark';
+                                    } elseif ($user->is_admin) {
+                                        $roleLabel = 'Super Admin';
+                                        $roleBadge = 'badge-success';
+                                    } elseif (in_array('iuran.manage', $userPermissions, true)) {
+                                        $roleLabel = 'Petugas Iuran';
+                                        $roleBadge = 'badge-primary';
+                                    } else {
+                                        $roleLabel = 'Anggota';
+                                        $roleBadge = 'badge-secondary';
+                                    }
+                                @endphp
+                                <span class="badge {{ $roleBadge }}">{{ $roleLabel }}</span>
                             </td>
                             <td>
                                 @if(!$user->is_platform_admin && $user->is_admin && (int) $user->data_owner_user_id === (int) $user->id)

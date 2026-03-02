@@ -26,7 +26,7 @@
             color: var(--text);
             display: grid;
             place-items: center;
-            padding: 18px;
+            padding: 18px 18px calc(30px + env(safe-area-inset-bottom));
         }
         .wrap {
             width: 100%;
@@ -36,6 +36,17 @@
             border-radius: 16px;
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
             padding: 22px;
+        }
+        .logo-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .login-logo {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 18px rgba(37, 99, 235, 0.2));
         }
         .mode-badge {
             display: inline-block;
@@ -100,10 +111,20 @@
             color: var(--muted);
         }
         .foot a { color: var(--text); text-decoration: none; font-weight: 700; }
+        .copyright {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
         .alerts { margin-bottom: 12px; font-size: 0.86rem; }
         .alert { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
         .alert-error { border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; }
         .alert-ok { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; }
+        @media (max-width: 575.98px) {
+            body { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+        }
     </style>
 </head>
 <body>
@@ -111,8 +132,14 @@
     $mode = old('login_mode', $mode ?? 'organization');
     $mode = in_array($mode, ['organization', 'cooperative'], true) ? $mode : 'organization';
     $isCoop = $mode === 'cooperative';
+    $customLogoPath = public_path('logo-backend.png');
+    $logoSrc = file_exists($customLogoPath) ? asset('logo-backend.png') : asset('logo-finance.png');
 @endphp
 <div class="wrap">
+    <div class="logo-wrap">
+        <img src="{{ $logoSrc }}" alt="Logo RAMS Finance" class="login-logo">
+    </div>
+
     <span class="mode-badge {{ $isCoop ? 'mode-coop' : 'mode-org' }}">
         {{ $isCoop ? 'Cooperative Finance' : 'Organizational Finance' }}
     </span>
@@ -168,6 +195,7 @@
         <a href="{{ route('register', ['mode' => $mode]) }}">Daftar</a>
         • <a href="{{ url('/') }}">Kembali ke Home</a>
     </div>
+    <div class="copyright">Copyright &copy; {{ date('Y') }} PT Ragam Manfaat Sinergi</div>
 </div>
 </body>
 </html>

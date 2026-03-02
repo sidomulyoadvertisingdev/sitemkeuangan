@@ -29,6 +29,14 @@
             --muted: #6b7280;
             --shadow: 0 18px 50px rgba(15,23,42,0.07);
             --header-bg: #ffffff;
+            --header-border: rgba(15,23,42,0.08);
+            --sidebar-bg: #ffffff;
+            --sidebar-header-bg: #ffffff;
+            --sidebar-border: #e2e8f0;
+            --sidebar-link: #1e3a8a;
+            --sidebar-link-icon: #2563eb;
+            --sidebar-link-hover-bg: #eff6ff;
+            --sidebar-link-hover-text: #1d4ed8;
         }
         [data-theme="dark"] {
             --bg: #0b1224;
@@ -36,21 +44,44 @@
             --text: #e5e7eb;
             --muted: #9ca3af;
             --shadow: 0 18px 40px rgba(0,0,0,0.55);
-            --header-bg: #ffffff;
+            --header-bg: #0f172a;
+            --header-border: rgba(148,163,184,0.22);
+            --sidebar-bg: #0f172a;
+            --sidebar-header-bg: #111827;
+            --sidebar-border: rgba(148,163,184,0.22);
+            --sidebar-link: #ffffff;
+            --sidebar-link-icon: #ffffff;
+            --sidebar-link-hover-bg: rgba(59,130,246,0.2);
+            --sidebar-link-hover-text: #ffffff;
         }
         body { font-family: 'Manrope', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);}
-        .main-sidebar { background: var(--sidebar-grad); }
+        .main-sidebar { background: var(--sidebar-bg); }
         .brand-link {
-            border-bottom: 1px solid rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.08);
+            border-bottom: 1px solid var(--sidebar-border);
+            background: var(--sidebar-header-bg);
         }
-        .nav-sidebar .nav-link { border-radius: 10px; margin: 4px 8px; }
+        .nav-sidebar .nav-link { border-radius: 10px; margin: 4px 8px; color: var(--sidebar-link); }
         .nav-sidebar .nav-link.active { background: var(--accent); color: #fff; box-shadow: 0 8px 18px rgba(37,99,235,0.25); }
-        .nav-sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        .nav-sidebar .nav-link:hover { color: var(--sidebar-link-hover-text); background: var(--sidebar-link-hover-bg); }
+        .nav-sidebar .nav-icon { color: var(--sidebar-link-icon); }
+        [data-theme="dark"] .nav-sidebar .nav-link p,
+        [data-theme="dark"] .nav-sidebar .nav-icon,
+        [data-theme="dark"] .nav-sidebar .right {
+            color: #ffffff !important;
+        }
         .small-box { border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.06); background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(34,197,94,0.12)); color: var(--text);}
         .card { border: 0; box-shadow: var(--shadow); border-radius: 14px; background: var(--card); color: var(--text);}
         .content-wrapper { background: var(--bg); color: var(--text);}
-        .main-header { border: 0; box-shadow: 0 10px 25px rgba(15,23,42,0.08); position: sticky; top: 0; z-index: 1030; background: var(--header-bg) !important; backdrop-filter: blur(8px);}
+        .main-header {
+            border: 0;
+            border-bottom: 1px solid var(--header-border);
+            box-shadow: 0 10px 25px rgba(15,23,42,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            background: var(--header-bg) !important;
+            backdrop-filter: blur(8px);
+        }
         .navbar-light .navbar-nav .nav-link { color: var(--text); }
         .navbar-light .navbar-nav .nav-link:hover { color: var(--accent); }
         .theme-toggle { border: 1px solid rgba(0,0,0,0.05); border-radius: 999px; padding: 6px 10px; background: var(--card); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
@@ -141,6 +172,8 @@
             .content-header h1 { font-size: 1.1rem; }
             .nav-sidebar .nav-link p { font-size: 0.9rem; }
             .table td, .table th { padding: 0.45rem; font-size: 0.85rem; }
+            .content-wrapper { padding-bottom: calc(2.5rem + env(safe-area-inset-bottom)); }
+            .content { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
         }
     </style>
 
@@ -190,7 +223,7 @@
     </nav>
 
     {{-- ================= SIDEBAR ================= --}}
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <aside class="main-sidebar sidebar-light-primary elevation-4">
         <a href="{{ $homeRoute }}" class="brand-link text-center d-flex align-items-center justify-content-center">
             <img src="{{ asset('logo-finance.png') }}" alt="Logo" class="brand-logo">
         </a>
@@ -222,7 +255,7 @@
                             <a href="{{ route('transfers.index') }}"
                                class="nav-link {{ request()->routeIs('transfers*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-random"></i>
-                                <p>Transfer & Request</p>
+                                <p>Transfer</p>
                             </a>
                         </li>
                     @endif
@@ -232,7 +265,7 @@
                             <a href="{{ route('bank-accounts.index') }}"
                                class="nav-link {{ request()->routeIs('bank-accounts*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-university"></i>
-                                <p>Rekening Bank</p>
+                                <p>Dompet & Rekening</p>
                             </a>
                         </li>
                     @endif

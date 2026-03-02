@@ -25,6 +25,7 @@
             color: var(--text);
             position: relative;
             overflow-x: hidden;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         .shape-a, .shape-b {
             position: absolute;
@@ -51,20 +52,20 @@
             z-index: 1;
             max-width: 1040px;
             margin: 0 auto;
-            padding: 48px 20px 70px;
+            padding: 48px 20px calc(70px + env(safe-area-inset-bottom));
         }
         .brand {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            background: linear-gradient(140deg, #2563eb, #1d4ed8);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 18px;
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
         }
-        .brand img { width: 24px; height: 24px; object-fit: contain; }
+        .brand img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.18));
+        }
         h1 {
             margin: 0;
             text-align: center;
@@ -151,8 +152,16 @@
             font-weight: 700;
         }
         .sub-link:hover { color: var(--text); }
+        .copyright {
+            margin-top: 22px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
         @media (max-width: 860px) {
             .grid { grid-template-columns: 1fr; }
+            .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
         }
     </style>
 </head>
@@ -197,6 +206,7 @@
                 <a class="sub-link" href="{{ route('register', ['mode' => 'cooperative']) }}">Daftar Akun Cooperative</a>
             </article>
         </section>
+        <div class="copyright">Copyright &copy; {{ date('Y') }} PT Ragam Manfaat Sinergi</div>
     </main>
 </body>
 </html>

@@ -51,6 +51,50 @@
                 @endif
             </div>
 
+            <div class="form-group">
+                <label>Tipe User</label>
+                <select name="user_role_template" id="user_role_template" class="form-control">
+                    @foreach($userRoleTemplates as $templateKey => $templateLabel)
+                        <option value="{{ $templateKey }}" {{ old('user_role_template', $defaultUserRoleTemplate) === $templateKey ? 'selected' : '' }}>
+                            {{ $templateLabel }}
+                        </option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Pilih Petugas Iuran atau Anggota agar hak akses diset otomatis.</small>
+            </div>
+
+            <div class="form-group" id="iuranMemberBox">
+                <label>Target Iuran Anggota (otomatis dibuat di modul iuran)</label>
+                <input type="number"
+                       name="iuran_target_amount"
+                       id="iuran_target_amount"
+                       class="form-control mb-2"
+                       min="1"
+                       step="1"
+                       value="{{ old('iuran_target_amount', 1200000) }}"
+                       placeholder="Contoh: 1200000">
+                <div class="form-row">
+                    <div class="col">
+                        <input type="number"
+                               name="iuran_target_start_year"
+                               class="form-control"
+                               min="2000"
+                               max="2100"
+                               value="{{ old('iuran_target_start_year', date('Y')) }}"
+                               placeholder="Tahun Awal">
+                    </div>
+                    <div class="col">
+                        <input type="number"
+                               name="iuran_target_end_year"
+                               class="form-control"
+                               min="2000"
+                               max="2100"
+                               value="{{ old('iuran_target_end_year', date('Y')) }}"
+                               placeholder="Tahun Akhir">
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group" id="accessOrgBox">
                 <label>Akses Data Perkumpulan</label>
                 @if($canChooseAccessOrganization)
@@ -147,11 +191,42 @@
         const inviteQuotaInput = document.getElementById('invite_quota');
         const canChooseAccessOrganization = @json((bool) $canChooseAccessOrganization);
         const canManageInviteQuota = @json((bool) $canManageInviteQuota);
+        const userRoleTemplate = document.getElementById('user_role_template');
+        const iuranMemberBox = document.getElementById('iuranMemberBox');
+
+        const permissionDefaults = {
+            petugas_iuran: ['transactions.manage', 'bank_accounts.manage', 'iuran.manage', 'reports.view'],
+            anggota: ['transactions.manage'],
+        };
+
+        function setPermissionSelections(values) {
+            const checkboxes = document.querySelectorAll('input[name="permissions[]"]');
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = values.includes(checkbox.value);
+            });
+        }
+
+        function applyRoleTemplate() {
+            if (!userRoleTemplate || !adminCheckbox) return;
+
+            const role = userRoleTemplate.value;
+            if (role === 'admin') {
+                adminCheckbox.checked = true;
+            } else if (role === 'petugas_iuran' || role === 'anggota') {
+                adminCheckbox.checked = false;
+                setPermissionSelections(permissionDefaults[role] || []);
+            }
+
+            if (iuranMemberBox) {
+                iuranMemberBox.style.display = role === 'anggota' ? '' : 'none';
+            }
+        }
 
         function togglePermissions() {
             if (!adminCheckbox || !permissionBox || !accessOrgBox || !organizationInput) return;
 
             const isAdmin = adminCheckbox.checked;
+            const selectedRole = userRoleTemplate ? userRoleTemplate.value : 'custom';
             permissionBox.style.display = isAdmin ? 'none' : '';
             accessOrgBox.style.display = isAdmin ? 'none' : '';
             if (accessOrgSelect) {
@@ -178,10 +253,20 @@
                     inviteQuotaInput.value = '';
                 }
             }
+
+            if (iuranMemberBox) {
+                iuranMemberBox.style.display = !isAdmin && selectedRole === 'anggota' ? '' : 'none';
+            }
         }
 
         accessOrgSelect?.addEventListener('change', togglePermissions);
         adminCheckbox?.addEventListener('change', togglePermissions);
+        userRoleTemplate?.addEventListener('change', function () {
+            applyRoleTemplate();
+            togglePermissions();
+        });
+
+        applyRoleTemplate();
         togglePermissions();
     })();
 </script>

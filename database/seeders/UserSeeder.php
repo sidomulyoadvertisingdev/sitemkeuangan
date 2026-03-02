@@ -2,22 +2,25 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Owner platform untuk mode Organization
-        $platformAdmin = User::updateOrCreate(
-            ['email' => 'user@keuangan.test'],
+        $defaultPlainPassword = 'password123';
+        $defaultPassword = Hash::make($defaultPlainPassword);
+
+        // Platform admin organisasi
+        $platformOrganization = User::updateOrCreate(
+            ['email' => 'platform-org@keuangan.test'],
             [
-                'name' => 'User Keuangan',
-                'organization_name' => 'Platform Keuangan',
+                'name' => 'Platform Admin Organisasi',
+                'organization_name' => 'Platform Keuangan Pribadi',
                 'account_mode' => User::MODE_ORGANIZATION,
-                'password' => Hash::make('password'),
+                'password' => $defaultPassword,
                 'is_admin' => true,
                 'is_platform_admin' => true,
                 'permissions' => null,
@@ -25,33 +28,71 @@ class UserSeeder extends Seeder
                 'approved_at' => now(),
             ]
         );
-        $platformAdmin->update(['data_owner_user_id' => $platformAdmin->id]);
+        $this->markSelfAsDataOwner($platformOrganization);
 
-        // Owner platform untuk mode Cooperative
+        // Platform admin koperasi
         $platformCooperative = User::updateOrCreate(
-            ['email' => 'koperasi@keuangan.test'],
+            ['email' => 'platform-koperasi@keuangan.test'],
+            [
+                'name' => 'Platform Admin Koperasi',
+                'organization_name' => 'Platform Keuangan Pribadi',
+                'account_mode' => User::MODE_COOPERATIVE,
+                'password' => $defaultPassword,
+                'is_admin' => true,
+                'is_platform_admin' => true,
+                'permissions' => null,
+                'account_status' => User::STATUS_APPROVED,
+                'approved_at' => now(),
+            ]
+        );
+        $this->markSelfAsDataOwner($platformCooperative);
+
+        // Owner organisasi (non-platform)
+        $ownerOrganization = User::updateOrCreate(
+            ['email' => 'owner.organisasi@keuangan.test'],
+            [
+                'name' => 'Owner Organisasi',
+                'organization_name' => 'Organisasi Maju Bersama',
+                'account_mode' => User::MODE_ORGANIZATION,
+                'password' => $defaultPassword,
+                'is_admin' => true,
+                'is_platform_admin' => false,
+                'permissions' => null,
+                'account_status' => User::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => $platformOrganization->id,
+                'invite_quota' => 25,
+            ]
+        );
+        $this->markSelfAsDataOwner($ownerOrganization);
+
+        // Owner koperasi (non-platform)
+        $ownerCooperative = User::updateOrCreate(
+            ['email' => 'owner.koperasi@keuangan.test'],
             [
                 'name' => 'Owner Koperasi',
-                'organization_name' => 'Platform Koperasi',
+                'organization_name' => 'Koperasi Sejahtera Bersama',
                 'account_mode' => User::MODE_COOPERATIVE,
-                'password' => Hash::make('password'),
+                'password' => $defaultPassword,
                 'is_admin' => true,
-                'is_platform_admin' => true,
+                'is_platform_admin' => false,
                 'permissions' => null,
                 'account_status' => User::STATUS_APPROVED,
                 'approved_at' => now(),
+                'approved_by' => $platformCooperative->id,
+                'invite_quota' => 25,
             ]
         );
-        $platformCooperative->update(['data_owner_user_id' => $platformCooperative->id]);
+        $this->markSelfAsDataOwner($ownerCooperative);
 
-        // Optional: user dummy mode Organization
-        $userKedua = User::updateOrCreate(
-            ['email' => 'user2@keuangan.test'],
+        // Petugas penarikan organisasi
+        User::updateOrCreate(
+            ['email' => 'petugas.organisasi@keuangan.test'],
             [
-                'name' => 'User Kedua',
-                'organization_name' => 'Komunitas Kedua',
+                'name' => 'Petugas Organisasi',
+                'organization_name' => $ownerOrganization->organization_name,
                 'account_mode' => User::MODE_ORGANIZATION,
-                'password' => Hash::make('password'),
+                'password' => $defaultPassword,
                 'is_admin' => false,
                 'is_platform_admin' => false,
                 'permissions' => [
@@ -62,8 +103,143 @@ class UserSeeder extends Seeder
                 ],
                 'account_status' => User::STATUS_APPROVED,
                 'approved_at' => now(),
+                'approved_by' => $ownerOrganization->id,
+                'data_owner_user_id' => $ownerOrganization->id,
             ]
         );
-        $userKedua->update(['data_owner_user_id' => $userKedua->id]);
+
+        // Anggota penabung (organisasi)
+        User::updateOrCreate(
+            ['email' => 'anggota@keuangan.test'],
+            [
+                'name' => 'Anggota Penabung',
+                'organization_name' => $ownerOrganization->organization_name,
+                'account_mode' => User::MODE_ORGANIZATION,
+                'password' => $defaultPassword,
+                'is_admin' => false,
+                'is_platform_admin' => false,
+                'permissions' => [
+                    'transactions.manage',
+                ],
+                'account_status' => User::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => $ownerOrganization->id,
+                'data_owner_user_id' => $ownerOrganization->id,
+            ]
+        );
+
+        // Petugas penarikan koperasi
+        User::updateOrCreate(
+            ['email' => 'petugas.koperasi@keuangan.test'],
+            [
+                'name' => 'Petugas Koperasi',
+                'organization_name' => $ownerCooperative->organization_name,
+                'account_mode' => User::MODE_COOPERATIVE,
+                'password' => $defaultPassword,
+                'is_admin' => false,
+                'is_platform_admin' => false,
+                'permissions' => [
+                    'transactions.manage',
+                    'bank_accounts.manage',
+                    'koperasi.manage',
+                    'reports.view',
+                ],
+                'account_status' => User::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => $ownerCooperative->id,
+                'data_owner_user_id' => $ownerCooperative->id,
+            ]
+        );
+
+        // Anggota koperasi
+        User::updateOrCreate(
+            ['email' => 'anggota.koperasi@keuangan.test'],
+            [
+                'name' => 'Anggota Koperasi',
+                'organization_name' => $ownerCooperative->organization_name,
+                'account_mode' => User::MODE_COOPERATIVE,
+                'password' => $defaultPassword,
+                'is_admin' => false,
+                'is_platform_admin' => false,
+                'permissions' => [
+                    'transactions.manage',
+                ],
+                'account_status' => User::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => $ownerCooperative->id,
+                'data_owner_user_id' => $ownerCooperative->id,
+            ]
+        );
+
+        // Akun pending approval
+        User::updateOrCreate(
+            ['email' => 'pending@keuangan.test'],
+            [
+                'name' => 'User Pending',
+                'organization_name' => $ownerOrganization->organization_name,
+                'account_mode' => User::MODE_ORGANIZATION,
+                'password' => $defaultPassword,
+                'is_admin' => false,
+                'is_platform_admin' => false,
+                'permissions' => ['transactions.manage'],
+                'account_status' => User::STATUS_PENDING,
+                'approved_at' => null,
+                'approved_by' => null,
+                'data_owner_user_id' => $ownerOrganization->id,
+                'banned_at' => null,
+                'banned_reason' => null,
+            ]
+        );
+
+        // Akun banned
+        User::updateOrCreate(
+            ['email' => 'banned@keuangan.test'],
+            [
+                'name' => 'User Banned',
+                'organization_name' => $ownerOrganization->organization_name,
+                'account_mode' => User::MODE_ORGANIZATION,
+                'password' => $defaultPassword,
+                'is_admin' => false,
+                'is_platform_admin' => false,
+                'permissions' => ['transactions.manage'],
+                'account_status' => User::STATUS_BANNED,
+                'approved_at' => now()->subDays(7),
+                'approved_by' => $ownerOrganization->id,
+                'data_owner_user_id' => $ownerOrganization->id,
+                'banned_at' => now()->subDays(2),
+                'banned_reason' => 'Pelanggaran kebijakan penggunaan aplikasi.',
+            ]
+        );
+
+        $this->printSeedCredentials($defaultPlainPassword);
+    }
+
+    private function markSelfAsDataOwner(User $user): void
+    {
+        if ((int) $user->data_owner_user_id !== (int) $user->id) {
+            $user->update(['data_owner_user_id' => $user->id]);
+        }
+    }
+
+    private function printSeedCredentials(string $plainPassword): void
+    {
+        if (!$this->command) {
+            return;
+        }
+
+        $this->command->newLine();
+        $this->command->info('Seeder user berhasil dibuat. Kredensial login:');
+        $this->command->line('- platform-org@keuangan.test');
+        $this->command->line('- platform-koperasi@keuangan.test');
+        $this->command->line('- owner.organisasi@keuangan.test');
+        $this->command->line('- owner.koperasi@keuangan.test');
+        $this->command->line('- petugas.organisasi@keuangan.test');
+        $this->command->line('- petugas.koperasi@keuangan.test');
+        $this->command->line('- anggota@keuangan.test');
+        $this->command->line('- anggota.koperasi@keuangan.test');
+        $this->command->line('- pending@keuangan.test');
+        $this->command->line('- banned@keuangan.test');
+        $this->command->line("Password default semua akun: {$plainPassword}");
+        $this->command->newLine();
     }
 }

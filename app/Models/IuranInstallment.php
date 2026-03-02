@@ -13,6 +13,8 @@ class IuranInstallment extends Model
         'iuran_member_id',
         'bank_account_id',
         'category_id',
+        'officer_user_id',
+        'project_id',
         'amount',
         'paid_at',
         'note',
@@ -31,5 +33,15 @@ class IuranInstallment extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function officer()
+    {
+        return $this->belongsTo(User::class, 'officer_user_id');
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
     }
 }

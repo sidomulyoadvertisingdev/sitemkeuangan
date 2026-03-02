@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\IuranInstallment;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -105,6 +107,47 @@ class ReportController extends Controller
             })
             ->values();
 
+        $iuranByOfficerRows = IuranInstallment::query()
+            ->join('iuran_members', 'iuran_members.id', '=', 'iuran_installments.iuran_member_id')
+            ->leftJoin('users as officers', 'officers.id', '=', 'iuran_installments.officer_user_id')
+            ->where('iuran_members.user_id', $userId)
+            ->whereBetween('iuran_installments.paid_at', [$validated['start_date'], $validated['end_date']])
+            ->select(
+                DB::raw('COALESCE(iuran_installments.officer_user_id, 0) as officer_id'),
+                DB::raw("COALESCE(officers.name, 'Tanpa Petugas') as officer_name"),
+                DB::raw('SUM(iuran_installments.amount) as total_amount'),
+                DB::raw('COUNT(iuran_installments.id) as installment_count'),
+                DB::raw('COUNT(DISTINCT iuran_installments.iuran_member_id) as member_count')
+            )
+            ->groupBy(
+                DB::raw('COALESCE(iuran_installments.officer_user_id, 0)'),
+                DB::raw("COALESCE(officers.name, 'Tanpa Petugas')")
+            )
+            ->orderByDesc('total_amount')
+            ->get();
+
+        $totalIuranCollected = (float) $iuranByOfficerRows->sum('total_amount');
+        $iuranByOfficer = $iuranByOfficerRows
+            ->map(function ($row) use ($totalIuranCollected) {
+                $totalAmount = (float) $row->total_amount;
+                $installmentCount = (int) $row->installment_count;
+
+                return [
+                    'officer_id' => (int) $row->officer_id,
+                    'officer_name' => (string) $row->officer_name,
+                    'total_amount' => $totalAmount,
+                    'installment_count' => $installmentCount,
+                    'member_count' => (int) $row->member_count,
+                    'average_amount' => $installmentCount > 0
+                        ? round($totalAmount / $installmentCount, 2)
+                        : 0.0,
+                    'contribution_percent' => $totalIuranCollected > 0
+                        ? round(($totalAmount / $totalIuranCollected) * 100, 2)
+                        : 0.0,
+                ];
+            })
+            ->values();
+
         return [
             'startDate' => $validated['start_date'],
             'endDate' => $validated['end_date'],
@@ -119,6 +162,8 @@ class ReportController extends Controller
             'incomeByBankAccount' => $incomeByBankAccount,
             'expenseByBankAccount' => $expenseByBankAccount,
             'expenseUsage' => $expenseUsage,
+            'iuranByOfficer' => $iuranByOfficer,
+            'totalIuranCollected' => $totalIuranCollected,
         ];
     }
 
@@ -234,6 +279,12 @@ class ReportController extends Controller
             $y - 4,
             'Sumber Pengeluaran Terbesar',
             $data['expenseBySource']->take(6)
+        );
+        $y = $this->appendRankingSection(
+            $commands,
+            $y - 4,
+            'Petugas Penarikan Iuran Terbaik',
+            collect($data['iuranByOfficer'])->pluck('total_amount', 'officer_name')->take(6)
         );
 
         $commands[] = $this->pdfTextCommand(30, $y - 4, 'Pengeluaran Untuk Apa Saja (Top 6)', 9, 'F2');

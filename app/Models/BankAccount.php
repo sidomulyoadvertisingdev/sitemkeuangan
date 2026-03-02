@@ -11,8 +11,13 @@ class BankAccount extends Model
     use HasFactory;
     use BelongsToCurrentUser;
 
+    public const KIND_GENERAL = 'general';
+    public const KIND_OFFICER_WALLET = 'officer_wallet';
+
     protected $fillable = [
         'user_id',
+        'account_kind',
+        'owner_user_id',
         'name',
         'bank_name',
         'account_number',
@@ -23,6 +28,11 @@ class BankAccount extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
     }
 
     public function projects()

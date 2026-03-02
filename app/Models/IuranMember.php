@@ -31,6 +31,18 @@ class IuranMember extends Model
         return $this->hasMany(IuranInstallment::class);
     }
 
+    public function projectAssignments()
+    {
+        return $this->hasMany(ProjectIuranAssignment::class, 'iuran_member_id');
+    }
+
+    public function projects()
+    {
+        return $this->belongsToMany(Project::class, 'project_iuran_assignments', 'iuran_member_id', 'project_id')
+            ->withPivot(['officer_user_id', 'assigned_by', 'note'])
+            ->withTimestamps();
+    }
+
     public function getPaidAttribute(): float
     {
         return (float) $this->installments()->sum('amount');

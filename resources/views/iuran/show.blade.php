@@ -39,12 +39,23 @@
 
                     <div class="form-group">
                         <label>Rekening</label>
-                        <select name="bank_account_id" class="form-control" required>
-                            <option value="">-- Pilih Rekening --</option>
-                            @foreach($accounts as $acc)
-                                <option value="{{ $acc->id }}">{{ $acc->name }} {{ $acc->account_number ? '('.$acc->account_number.')' : '' }}</option>
-                            @endforeach
-                        </select>
+                        @php
+                            $singleOfficerWallet = $accounts->count() === 1
+                                && (string) ($accounts->first()->account_kind ?? '') === \App\Models\BankAccount::KIND_OFFICER_WALLET;
+                        @endphp
+                        @if($singleOfficerWallet)
+                            <input type="hidden" name="bank_account_id" value="{{ $accounts->first()->id }}">
+                            <div class="alert alert-info mb-0">
+                                Dana iuran otomatis masuk ke <strong>{{ $accounts->first()->name }}</strong>.
+                            </div>
+                        @else
+                            <select name="bank_account_id" class="form-control" required>
+                                <option value="">-- Pilih Rekening --</option>
+                                @foreach($accounts as $acc)
+                                    <option value="{{ $acc->id }}">{{ $acc->name }} {{ $acc->account_number ? '('.$acc->account_number.')' : '' }}</option>
+                                @endforeach
+                            </select>
+                        @endif
                     </div>
 
                     <div class="form-group">

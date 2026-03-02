@@ -134,4 +134,14 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'data_owner_user_id');
     }
+
+    public function mobileAccessTokens()
+    {
+        return $this->hasMany(MobileAccessToken::class);
+    }
+
+    public function iuranAssignmentsAsOfficer()
+    {
+        return $this->hasMany(ProjectIuranAssignment::class, 'officer_user_id');
+    }
 }

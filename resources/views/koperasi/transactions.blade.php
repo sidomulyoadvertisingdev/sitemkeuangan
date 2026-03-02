@@ -171,7 +171,7 @@
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
                                 <td>{{ ucfirst($row->type) }}</td>
-                                <td>Rp {{ number_format((float) $row->amount, 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format((float) $row->amount, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->transaction_date)->format('Y-m-d H:i:s') }}</td>
                             </tr>
                         @elseif($menuKey === 'pinjam')
@@ -179,9 +179,9 @@
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
-                                <td>Rp {{ number_format((float) $row->principal_amount, 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format((float) $row->principal_amount, 0, ',', '.') }}</td>
                                 <td>{{ number_format((float) $row->interest_percent, 2, ',', '.') }}%</td>
-                                <td>Rp {{ number_format((float) $row->admin_fee, 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format((float) $row->admin_fee, 0, ',', '.') }}</td>
                                 <td>{{ $row->tenor_months }} bulan</td>
                                 <td>{{ \Carbon\Carbon::parse($row->disbursed_at)->format('Y-m-d') }}</td>
                             </tr>
@@ -190,7 +190,7 @@
                                 <td>W-{{ str_pad((string) $row->id, 13, '0', STR_PAD_LEFT) }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
-                                <td>Rp {{ number_format(abs((float) $row->amount), 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format(abs((float) $row->amount), 0, ',', '.') }}</td>
                                 <td>{{ $row->note ?: '-' }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->transaction_date)->format('Y-m-d H:i:s') }}</td>
                             </tr>
@@ -200,7 +200,7 @@
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->installment_no }}</td>
-                                <td>Rp {{ number_format((float) $row->amount_total, 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format((float) $row->amount_total, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d H:i:s') }}</td>
                             </tr>
                         @else
@@ -209,7 +209,7 @@
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
-                                <td>Rp {{ number_format((float) $row->amount_interest, 2, ',', '.') }}</td>
+                                <td>Rp {{ number_format((float) $row->amount_interest, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d H:i:s') }}</td>
                             </tr>
                         @endif

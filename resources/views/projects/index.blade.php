@@ -28,13 +28,28 @@
                             <p class="text-muted">{{ $project->description ?? 'Tidak ada deskripsi' }}</p>
                             <div class="mb-2">
                                 <small>Rekening: {{ $project->bankAccount?->name ?? '-' }}</small><br>
-                                <small>Target: Rp {{ number_format($project->target_amount,0,',','.') }}</small>
+                                <small>Target Dana Masuk: Rp {{ number_format($project->incoming_target ?? $project->target_amount,0,',','.') }}</small><br>
+                                <small>Dana Masuk Tercapai: Rp {{ number_format($project->iuran_collected ?? 0,0,',','.') }}</small><br>
+                                <small>Dana Keluar Proyek: Rp {{ number_format($project->spent ?? 0,0,',','.') }}</small>
+                            </div>
+                            <div class="progress mb-1" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $project->incoming_progress ?? 0 }}%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <small>Progress Dana Masuk</small>
+                                <small>{{ $project->incoming_progress ?? 0 }}%</small>
                             </div>
                             <div class="progress mb-2" style="height: 8px;">
                                 <div class="progress-bar" role="progressbar" style="width: {{ $project->progress ?? 0 }}%"></div>
                             </div>
                             <div class="d-flex justify-content-between">
-                                <small>Terpakai (net): Rp {{ number_format($project->spent ?? 0,0,',','.') }}</small>
+                                <small>
+                                    @if(($project->cashflow_gap ?? 0) >= 0)
+                                        Surplus: Rp {{ number_format($project->cashflow_gap ?? 0,0,',','.') }}
+                                    @else
+                                        Defisit: Rp {{ number_format(abs($project->cashflow_gap ?? 0),0,',','.') }}
+                                    @endif
+                                </small>
                                 <small>{{ $project->progress ?? 0 }}%</small>
                             </div>
                         </div>

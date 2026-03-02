@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\IuranMember;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class UserManagementController extends Controller
         $modeOptions = User::modeOptions();
         $defaultAccountMode = $this->resolveManagedAccountMode($request->query('account_mode'));
         $canEditAccountMode = auth()->user()->is_platform_admin;
+        $userRoleTemplates = $this->userRoleTemplateOptions();
+        $defaultUserRoleTemplate = 'custom';
 
         return view('users.create', compact(
             'permissionOptions',
@@ -62,7 +65,9 @@ class UserManagementController extends Controller
             'currentAccessOrganization',
             'modeOptions',
             'defaultAccountMode',
-            'canEditAccountMode'
+            'canEditAccountMode',
+            'userRoleTemplates',
+            'defaultUserRoleTemplate'
         ));
     }
 
@@ -76,6 +81,10 @@ class UserManagementController extends Controller
             'name' => 'required|string|max:255',
             'organization_name' => 'required|string|max:150',
             'account_mode' => 'nullable|string|in:organization,cooperative',
+            'user_role_template' => 'nullable|string|in:custom,admin,petugas_iuran,anggota',
+            'iuran_target_amount' => 'nullable|numeric|min:1',
+            'iuran_target_start_year' => 'nullable|integer|min:2000|max:2100',
+            'iuran_target_end_year' => 'nullable|integer|min:2000|max:2100|gte:iuran_target_start_year',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'is_admin' => 'nullable|boolean',
@@ -86,11 +95,19 @@ class UserManagementController extends Controller
         ]);
 
         $isAdmin = (bool) ($validated['is_admin'] ?? false);
-        $isOwnerCreation = $isAdmin && $isPlatformAdmin;
         $inviteQuota = $this->sanitizeInviteQuota($validated['invite_quota'] ?? null);
         $permissions = $this->sanitizePermissions($validated['permissions'] ?? [], $permissionKeys);
         $selectedDataOwnerId = $validated['data_owner_user_id'] ?? null;
         $accountMode = $this->resolveManagedAccountMode($validated['account_mode'] ?? null);
+        $roleTemplate = (string) ($validated['user_role_template'] ?? 'custom');
+
+        [$isAdmin, $permissions] = $this->applyUserRoleTemplate(
+            $roleTemplate,
+            $isAdmin,
+            $permissions,
+            $isPlatformAdmin
+        );
+        $isOwnerCreation = $isAdmin && $isPlatformAdmin;
 
         if (!$isPlatformAdmin) {
             $selectedDataOwnerId = $actor->tenantUserId();
@@ -140,6 +157,8 @@ class UserManagementController extends Controller
             $user->update(['data_owner_user_id' => $user->id]);
         }
 
+        $this->syncIuranMemberFromUserTemplate($user, $roleTemplate, $validated);
+
         return redirect()
             ->route('users.index')
             ->with('success', 'User berhasil ditambahkan.');
@@ -159,6 +178,8 @@ class UserManagementController extends Controller
         $currentAccessOrganization = $this->resolveAccessOrganization(auth()->user()->tenantUserId());
         $modeOptions = User::modeOptions();
         $canEditAccountMode = auth()->user()->is_platform_admin && !$user->is_platform_admin;
+        $userRoleTemplates = $this->userRoleTemplateOptions();
+        $selectedUserRoleTemplate = $this->detectUserRoleTemplate($user);
 
         return view('users.edit', compact(
             'user',
@@ -168,7 +189,9 @@ class UserManagementController extends Controller
             'canManageInviteQuota',
             'currentAccessOrganization',
             'modeOptions',
-            'canEditAccountMode'
+            'canEditAccountMode',
+            'userRoleTemplates',
+            'selectedUserRoleTemplate'
         ));
     }
 
@@ -184,6 +207,10 @@ class UserManagementController extends Controller
             'name' => 'required|string|max:255',
             'organization_name' => 'required|string|max:150',
             'account_mode' => 'nullable|string|in:organization,cooperative',
+            'user_role_template' => 'nullable|string|in:custom,admin,petugas_iuran,anggota',
+            'iuran_target_amount' => 'nullable|numeric|min:1',
+            'iuran_target_start_year' => 'nullable|integer|min:2000|max:2100',
+            'iuran_target_end_year' => 'nullable|integer|min:2000|max:2100|gte:iuran_target_start_year',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8|confirmed',
             'is_admin' => 'nullable|boolean',
@@ -198,6 +225,15 @@ class UserManagementController extends Controller
         $permissions = $this->sanitizePermissions($validated['permissions'] ?? [], $permissionKeys);
         $selectedDataOwnerId = $validated['data_owner_user_id'] ?? null;
         $accountMode = $this->resolveManagedAccountMode($validated['account_mode'] ?? $user->account_mode);
+        $roleTemplate = (string) ($validated['user_role_template'] ?? 'custom');
+        $oldName = (string) $user->name;
+
+        [$isAdmin, $permissions] = $this->applyUserRoleTemplate(
+            $roleTemplate,
+            $isAdmin,
+            $permissions,
+            $isPlatformAdmin
+        );
 
         if (!$isPlatformAdmin) {
             $selectedDataOwnerId = $actor->tenantUserId();
@@ -259,6 +295,7 @@ class UserManagementController extends Controller
         }
 
         $user->update($data);
+        $this->syncIuranMemberFromUserTemplate($user, $roleTemplate, $validated, $oldName);
 
         return redirect()
             ->route('users.index')
@@ -496,5 +533,125 @@ class UserManagementController extends Controller
                 'data_owner_user_id' => "Kuota user perkumpulan {$dataOwner->organization_name} sudah penuh ({$quota} user).",
             ]);
         }
+    }
+
+    private function userRoleTemplateOptions(): array
+    {
+        return [
+            'custom' => 'Custom (manual)',
+            'admin' => 'Admin',
+            'petugas_iuran' => 'Petugas Iuran',
+            'anggota' => 'Anggota',
+        ];
+    }
+
+    private function detectUserRoleTemplate(User $user): string
+    {
+        if ($user->is_admin || $user->is_platform_admin) {
+            return 'admin';
+        }
+
+        $permissions = array_values($user->permissions ?? []);
+        if (in_array('iuran.manage', $permissions, true)) {
+            return 'petugas_iuran';
+        }
+
+        sort($permissions);
+        if ($permissions === ['transactions.manage']) {
+            return 'anggota';
+        }
+
+        return 'custom';
+    }
+
+    private function applyUserRoleTemplate(
+        string $roleTemplate,
+        bool $isAdmin,
+        array $permissions,
+        bool $isPlatformAdmin
+    ): array {
+        if ($roleTemplate === 'admin') {
+            return [true, []];
+        }
+
+        if ($roleTemplate === 'petugas_iuran') {
+            return [false, [
+                'transactions.manage',
+                'bank_accounts.manage',
+                'iuran.manage',
+                'reports.view',
+            ]];
+        }
+
+        if ($roleTemplate === 'anggota') {
+            return [false, [
+                'transactions.manage',
+            ]];
+        }
+
+        if (!$isAdmin && empty($permissions) && $isPlatformAdmin) {
+            return [false, ['transactions.manage']];
+        }
+
+        return [$isAdmin, $permissions];
+    }
+
+    private function syncIuranMemberFromUserTemplate(
+        User $user,
+        string $roleTemplate,
+        array $validated,
+        ?string $oldName = null
+    ): void {
+        if ($roleTemplate !== 'anggota') {
+            return;
+        }
+
+        if ($user->account_mode !== User::MODE_ORGANIZATION) {
+            return;
+        }
+
+        $tenantId = $user->tenantUserId();
+        if (!$tenantId) {
+            return;
+        }
+
+        $currentYear = (int) now()->year;
+        $targetAmount = (float) ($validated['iuran_target_amount'] ?? 1200000);
+        $targetStartYear = (int) ($validated['iuran_target_start_year'] ?? $currentYear);
+        $targetEndYear = (int) ($validated['iuran_target_end_year'] ?? $targetStartYear);
+
+        $member = IuranMember::query()
+            ->where('user_id', $tenantId)
+            ->where('name', $oldName ?? $user->name)
+            ->first();
+
+        if (!$member) {
+            $member = IuranMember::query()
+                ->where('user_id', $tenantId)
+                ->where('name', $user->name)
+                ->first();
+        }
+
+        if (!$member) {
+            IuranMember::create([
+                'user_id' => $tenantId,
+                'name' => $user->name,
+                'target_amount' => $targetAmount,
+                'target_start_year' => $targetStartYear,
+                'target_end_year' => $targetEndYear,
+                'status' => 'aktif',
+                'note' => 'Dibuat otomatis dari Management User.',
+            ]);
+            return;
+        }
+
+        $paid = (float) $member->installments()->sum('amount');
+        $member->update([
+            'name' => $user->name,
+            'target_amount' => $targetAmount,
+            'target_start_year' => $targetStartYear,
+            'target_end_year' => $targetEndYear,
+            'status' => $paid >= $targetAmount ? 'lunas' : 'aktif',
+        ]);
     }
 }
