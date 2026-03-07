@@ -6,13 +6,21 @@ use App\Models\KoperasiLoan;
 use App\Models\KoperasiLoanInstallment;
 use App\Models\KoperasiMember;
 use App\Models\KoperasiSaving;
+use App\Models\KoperasiWalletAccount;
 use Carbon\Carbon;
+use App\Services\KoperasiWalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class KoperasiController extends Controller
 {
+    public function __construct(
+        private readonly KoperasiWalletService $walletService
+    ) {
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -270,6 +278,7 @@ class KoperasiController extends Controller
 
         if ($menuKey === 'simpan') {
             $query = KoperasiSaving::query()
+                ->with('walletAccount:id,name,wallet_type')
                 ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_savings.koperasi_member_id')
                 ->where('koperasi_members.user_id', $userId)
                 ->where('koperasi_savings.amount', '>=', 0)
@@ -293,6 +302,7 @@ class KoperasiController extends Controller
             $rows = $query->paginate(10)->withQueryString();
         } elseif ($menuKey === 'pinjam') {
             $query = KoperasiLoan::query()
+                ->with('walletAccount:id,name,wallet_type')
                 ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_loans.koperasi_member_id')
                 ->where('koperasi_members.user_id', $userId)
                 ->select(
@@ -315,6 +325,7 @@ class KoperasiController extends Controller
             $rows = $query->paginate(10)->withQueryString();
         } elseif ($menuKey === 'withdraw') {
             $query = KoperasiSaving::query()
+                ->with('walletAccount:id,name,wallet_type')
                 ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_savings.koperasi_member_id')
                 ->where('koperasi_members.user_id', $userId)
                 ->where(function ($inner) {
@@ -342,6 +353,10 @@ class KoperasiController extends Controller
             $rows = $query->paginate(10)->withQueryString();
         } elseif ($menuKey === 'angsuran') {
             $query = KoperasiLoanInstallment::query()
+                ->with([
+                    'principalWalletAccount:id,name,wallet_type',
+                    'incomeWalletAccount:id,name,wallet_type',
+                ])
                 ->join('koperasi_loans', 'koperasi_loans.id', '=', 'koperasi_loan_installments.koperasi_loan_id')
                 ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_loans.koperasi_member_id')
                 ->where('koperasi_members.user_id', $userId)
@@ -369,6 +384,10 @@ class KoperasiController extends Controller
             $rows = $query->paginate(10)->withQueryString();
         } else {
             $query = KoperasiLoanInstallment::query()
+                ->with([
+                    'principalWalletAccount:id,name,wallet_type',
+                    'incomeWalletAccount:id,name,wallet_type',
+                ])
                 ->join('koperasi_loans', 'koperasi_loans.id', '=', 'koperasi_loan_installments.koperasi_loan_id')
                 ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_loans.koperasi_member_id')
                 ->where('koperasi_members.user_id', $userId)
@@ -413,6 +432,10 @@ class KoperasiController extends Controller
             ->orderByDesc('koperasi_loans.id')
             ->get();
 
+        $walletReferences = $this->walletService->activeWallets($userId);
+        $defaultWallets = $this->walletService->defaultWalletMap($userId);
+        $walletTypeOptions = KoperasiWalletAccount::typeOptions();
+
         return view('koperasi.transactions', compact(
             'menuKey',
             'menuLabel',
@@ -421,7 +444,10 @@ class KoperasiController extends Controller
             'rows',
             'q',
             'memberReferences',
-            'loanReferences'
+            'loanReferences',
+            'walletReferences',
+            'defaultWallets',
+            'walletTypeOptions'
         ));
     }
 
@@ -527,14 +553,19 @@ class KoperasiController extends Controller
         $this->ensureMemberOwner($koperasi);
 
         $savings = $koperasi->savings()
+            ->with('walletAccount:id,name,wallet_type')
             ->latest('transaction_date')
             ->latest()
             ->get();
 
         $loans = $koperasi->loans()
             ->with([
+                'walletAccount:id,name,wallet_type',
                 'installments' => function ($query) {
-                    $query->latest('paid_at')->latest();
+                    $query->with([
+                        'principalWalletAccount:id,name,wallet_type',
+                        'incomeWalletAccount:id,name,wallet_type',
+                    ])->latest('paid_at')->latest();
                 },
             ])
             ->withSum('installments as paid_principal', 'amount_principal')
@@ -570,7 +601,10 @@ class KoperasiController extends Controller
             'total_loan_outstanding' => (float) $loans->sum(fn ($loan) => (float) $loan->remaining_value),
         ];
 
-        return view('koperasi.show', compact('koperasi', 'savings', 'loans', 'summary'));
+        $walletReferences = $this->walletService->activeWallets(auth()->user()->tenantUserId());
+        $defaultWallets = $this->walletService->defaultWalletMap(auth()->user()->tenantUserId());
+
+        return view('koperasi.show', compact('koperasi', 'savings', 'loans', 'summary', 'walletReferences', 'defaultWallets'));
     }
 
     public function edit(KoperasiMember $koperasi)
@@ -631,16 +665,21 @@ class KoperasiController extends Controller
     public function storeSaving(Request $request, KoperasiMember $koperasi)
     {
         $this->ensureMemberOwner($koperasi);
+        $userId = auth()->user()->tenantUserId();
 
         $request->validate([
+            'wallet_account_id' => 'required|integer',
             'type' => 'required|in:pokok,wajib,sukarela',
             'amount' => 'required|numeric|min:1',
             'transaction_date' => 'required|date',
             'note' => 'nullable|string',
         ]);
 
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
+
         KoperasiSaving::create([
             'koperasi_member_id' => $koperasi->id,
+            'wallet_account_id' => $wallet->id,
             'type' => $request->type,
             'amount' => $request->amount,
             'transaction_date' => $request->transaction_date,
@@ -656,6 +695,7 @@ class KoperasiController extends Controller
 
         $request->validate([
             'member_account_no' => 'required|digits:8',
+            'wallet_account_id' => 'required|integer',
             'type' => 'required|in:pokok,wajib,sukarela',
             'amount' => 'required|numeric|min:1',
             'transaction_date' => 'required|date',
@@ -669,8 +709,11 @@ class KoperasiController extends Controller
             ])->withInput();
         }
 
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
+
         KoperasiSaving::create([
             'koperasi_member_id' => $member->id,
+            'wallet_account_id' => $wallet->id,
             'type' => $request->type,
             'amount' => $request->amount,
             'transaction_date' => $request->transaction_date,
@@ -688,6 +731,7 @@ class KoperasiController extends Controller
 
         $request->validate([
             'member_account_no' => 'required|digits:8',
+            'wallet_account_id' => 'required|integer',
             'loan_no' => 'required|string|max:50',
             'principal_amount' => 'required|numeric|min:1',
             'interest_percent' => 'required|numeric|min:0|max:100',
@@ -717,8 +761,11 @@ class KoperasiController extends Controller
             ])->withInput();
         }
 
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
+
         KoperasiLoan::create([
             'koperasi_member_id' => $member->id,
+            'wallet_account_id' => $wallet->id,
             'loan_no' => $request->loan_no,
             'principal_amount' => $request->principal_amount,
             'interest_percent' => $request->interest_percent,
@@ -741,6 +788,7 @@ class KoperasiController extends Controller
 
         $request->validate([
             'member_account_no' => 'required|digits:8',
+            'wallet_account_id' => 'required|integer',
             'amount' => 'required|numeric|min:1',
             'transaction_date' => 'required|date',
             'note' => 'nullable|string',
@@ -753,11 +801,14 @@ class KoperasiController extends Controller
             ])->withInput();
         }
 
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
+
         $note = trim((string) $request->note);
         $noteText = $note !== '' ? '[WD] ' . $note : '[WD] Penarikan simpanan sukarela';
 
         KoperasiSaving::create([
             'koperasi_member_id' => $member->id,
+            'wallet_account_id' => $wallet->id,
             'type' => 'sukarela',
             'amount' => -1 * abs((float) $request->amount),
             'transaction_date' => $request->transaction_date,
@@ -776,6 +827,8 @@ class KoperasiController extends Controller
         $request->validate([
             'member_account_no' => 'required|digits:8',
             'loan_no' => 'nullable|string|max:50',
+            'principal_wallet_account_id' => 'required|integer',
+            'income_wallet_account_id' => 'required|integer',
             'installment_no' => 'nullable|integer|min:1',
             'amount_total' => 'required|numeric|min:0.01',
             'amount_penalty' => 'required|numeric|min:0',
@@ -800,6 +853,9 @@ class KoperasiController extends Controller
             ])->withInput();
         }
 
+        $principalWallet = $this->resolveWalletOrFail((int) $request->principal_wallet_account_id, $userId, 'principal_wallet_account_id');
+        $incomeWallet = $this->resolveWalletOrFail((int) $request->income_wallet_account_id, $userId, 'income_wallet_account_id');
+
         $amountTotal = (float) $request->amount_total;
         $amountPenalty = (float) $request->amount_penalty;
         $corePayment = $amountTotal;
@@ -846,6 +902,8 @@ class KoperasiController extends Controller
 
         KoperasiLoanInstallment::create([
             'koperasi_loan_id' => $loan->id,
+            'principal_wallet_account_id' => $principalWallet->id,
+            'income_wallet_account_id' => $incomeWallet->id,
             'installment_no' => $installmentNo,
             'expected_amount' => $expectedAmount,
             'amount_principal' => $allocation['principal'],
@@ -867,18 +925,23 @@ class KoperasiController extends Controller
     public function storeWithdraw(Request $request, KoperasiMember $koperasi)
     {
         $this->ensureMemberOwner($koperasi);
+        $userId = auth()->user()->tenantUserId();
 
         $request->validate([
+            'wallet_account_id' => 'required|integer',
             'amount' => 'required|numeric|min:1',
             'transaction_date' => 'required|date',
             'note' => 'nullable|string',
         ]);
+
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
 
         $note = trim((string) $request->note);
         $noteText = $note !== '' ? '[WD] ' . $note : '[WD] Penarikan simpanan sukarela';
 
         KoperasiSaving::create([
             'koperasi_member_id' => $koperasi->id,
+            'wallet_account_id' => $wallet->id,
             'type' => 'sukarela',
             'amount' => -1 * abs((float) $request->amount),
             'transaction_date' => $request->transaction_date,
@@ -891,8 +954,10 @@ class KoperasiController extends Controller
     public function storeLoan(Request $request, KoperasiMember $koperasi)
     {
         $this->ensureMemberOwner($koperasi);
+        $userId = auth()->user()->tenantUserId();
 
         $request->validate([
+            'wallet_account_id' => 'required|integer',
             'loan_no' => [
                 'required',
                 'string',
@@ -911,8 +976,11 @@ class KoperasiController extends Controller
             'note' => 'nullable|string',
         ]);
 
+        $wallet = $this->resolveWalletOrFail((int) $request->wallet_account_id, $userId, 'wallet_account_id');
+
         KoperasiLoan::create([
             'koperasi_member_id' => $koperasi->id,
+            'wallet_account_id' => $wallet->id,
             'loan_no' => $request->loan_no,
             'principal_amount' => $request->principal_amount,
             'interest_percent' => $request->interest_percent,
@@ -930,15 +998,21 @@ class KoperasiController extends Controller
     public function storeInstallment(Request $request, KoperasiLoan $loan)
     {
         $member = $loan->member;
-        abort_if(!$member || $member->user_id !== auth()->user()->tenantUserId(), 403);
+        $userId = auth()->user()->tenantUserId();
+        abort_if(!$member || $member->user_id !== $userId, 403);
 
         $request->validate([
+            'principal_wallet_account_id' => 'required|integer',
+            'income_wallet_account_id' => 'required|integer',
             'installment_no' => 'nullable|integer|min:1',
             'amount_total' => 'required|numeric|min:0.01',
             'amount_penalty' => 'required|numeric|min:0',
             'paid_at' => 'required|date',
             'note' => 'nullable|string',
         ]);
+
+        $principalWallet = $this->resolveWalletOrFail((int) $request->principal_wallet_account_id, $userId, 'principal_wallet_account_id');
+        $incomeWallet = $this->resolveWalletOrFail((int) $request->income_wallet_account_id, $userId, 'income_wallet_account_id');
 
         $amountTotal = (float) $request->amount_total;
         $amountPenalty = (float) $request->amount_penalty;
@@ -986,6 +1060,8 @@ class KoperasiController extends Controller
 
         KoperasiLoanInstallment::create([
             'koperasi_loan_id' => $loan->id,
+            'principal_wallet_account_id' => $principalWallet->id,
+            'income_wallet_account_id' => $incomeWallet->id,
             'installment_no' => $installmentNo,
             'expected_amount' => $expectedAmount,
             'amount_principal' => $allocation['principal'],
@@ -1000,6 +1076,19 @@ class KoperasiController extends Controller
         $this->syncLoanStatus($loan);
 
         return back()->with('success', 'Angsuran pinjaman berhasil dicatat.');
+    }
+
+    private function resolveWalletOrFail(int $walletId, int $userId, string $field): KoperasiWalletAccount
+    {
+        $wallet = $this->walletService->resolveOwnedWallet($walletId, $userId);
+
+        if (!$wallet) {
+            throw ValidationException::withMessages([
+                $field => 'Dompet accounting tidak valid untuk akun koperasi ini.',
+            ]);
+        }
+
+        return $wallet;
     }
 
     private function ensureMemberOwner(KoperasiMember $member): void

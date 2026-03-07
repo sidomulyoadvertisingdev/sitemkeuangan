@@ -44,15 +44,6 @@
 
 <div class="card">
     <div class="card-header d-flex flex-wrap align-items-center">
-        <a href="{{ route('koperasi.dashboard') }}" class="btn btn-info btn-sm mr-2 mb-2">
-            <i class="fas fa-chart-pie"></i> Dashboard Koperasi
-        </a>
-        <a href="{{ route('koperasi.transactions', ['menu' => 'angsuran']) }}" class="btn btn-secondary btn-sm mr-2 mb-2">
-            <i class="fas fa-exchange-alt"></i> Menu Transaction
-        </a>
-        <a href="{{ route('koperasi.create') }}" class="btn btn-primary btn-sm mr-2 mb-2">
-            <i class="fas fa-plus"></i> Tambah Member
-        </a>
         <a href="{{ route('koperasi.export.pdf', ['q' => $q]) }}" class="btn btn-danger btn-sm mr-2 mb-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>

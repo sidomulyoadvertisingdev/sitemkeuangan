@@ -324,11 +324,30 @@
                         @php
                             $activeMenu = request()->routeIs('koperasi.transactions') ? (string) request()->route('menu') : '';
                         @endphp
-                        <li class="nav-item">
-                            <a href="{{ route('profile.edit') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-user"></i>
-                                <p>My Profile</p>
+                        <li class="nav-item has-treeview {{ request()->routeIs('koperasi.index', 'koperasi.show', 'koperasi.edit', 'koperasi.create') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->routeIs('koperasi.index', 'koperasi.show', 'koperasi.edit', 'koperasi.create') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>
+                                    Member
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.index') }}"
+                                       class="nav-link {{ request()->routeIs('koperasi.index', 'koperasi.show', 'koperasi.edit') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Daftar Member</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.create') }}"
+                                       class="nav-link {{ request()->routeIs('koperasi.create') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Tambah Member</p>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="nav-item has-treeview {{ request()->routeIs('koperasi.transactions') ? 'menu-open' : '' }}">
                             <a href="#" class="nav-link {{ request()->routeIs('koperasi.transactions') ? 'active' : '' }}">
@@ -376,6 +395,37 @@
                                 </li>
                             </ul>
                         </li>
+                        <li class="nav-item has-treeview {{ request()->routeIs('koperasi.finance.*') ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ request()->routeIs('koperasi.finance.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-calculator"></i>
+                                <p>
+                                    Finance
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.finance.report') }}"
+                                       class="nav-link {{ request()->routeIs('koperasi.finance.report') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Laporan Keuangan</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('koperasi.finance.accounting') }}"
+                                       class="nav-link {{ request()->routeIs('koperasi.finance.accounting') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Accounting</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('profile.edit') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user"></i>
+                                <p>My Profile</p>
+                            </a>
+                        </li>
                     @endif
 
                     @if(!$isCooperativeMode && auth()->user()->hasPermission('reports.view'))
@@ -388,12 +438,12 @@
                         </li>
                     @endif
 
-                    @if(!$isCooperativeMode && auth()->user()->hasPermission('users.manage'))
+                    @if(auth()->user()->hasPermission('users.manage'))
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}"
                                class="nav-link {{ request()->routeIs('users*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-user-shield"></i>
-                                <p>Manajemen User</p>
+                                <p>Management User</p>
                             </a>
                         </li>
                     @endif

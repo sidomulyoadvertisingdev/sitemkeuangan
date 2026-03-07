@@ -6,11 +6,11 @@
 @php
     $menuRoute = $menuKey === 'bagi_hasil' ? 'bagi-hasil' : $menuKey;
     $colspan = match ($menuKey) {
-        'simpan' => 6,
-        'pinjam' => 8,
-        'withdraw' => 6,
-        'angsuran' => 6,
-        'bagi_hasil' => 6,
+        'simpan' => 7,
+        'pinjam' => 9,
+        'withdraw' => 7,
+        'angsuran' => 8,
+        'bagi_hasil' => 7,
         default => 6,
     };
 
@@ -119,6 +119,7 @@
                             <th>No. Simpan</th>
                             <th>No Rekening</th>
                             <th>Nama Member</th>
+                            <th>Dompet</th>
                             <th>Jenis Simpanan</th>
                             <th>Jumlah</th>
                             <th>Tanggal Transaksi</th>
@@ -128,6 +129,7 @@
                             <th>No. Pinjam</th>
                             <th>No Rekening</th>
                             <th>Nama Member</th>
+                            <th>Dompet Sumber</th>
                             <th>Pokok</th>
                             <th>Bunga</th>
                             <th>Admin</th>
@@ -139,6 +141,7 @@
                             <th>No. Withdraw</th>
                             <th>No Rekening</th>
                             <th>Nama Member</th>
+                            <th>Dompet Sumber</th>
                             <th>Jumlah</th>
                             <th>Catatan</th>
                             <th>Tanggal Transaksi</th>
@@ -148,6 +151,8 @@
                             <th>No. Angsuran</th>
                             <th>No. Pinjam</th>
                             <th>No Rekening</th>
+                            <th>Dompet Pokok</th>
+                            <th>Dompet Pendapatan</th>
                             <th>Angsuran Ke</th>
                             <th>Jumlah</th>
                             <th>Tanggal Transaksi</th>
@@ -158,6 +163,7 @@
                             <th>No. Pinjam</th>
                             <th>No Rekening</th>
                             <th>Nama Member</th>
+                            <th>Dompet Pendapatan</th>
                             <th>Jumlah Bagi Hasil</th>
                             <th>Tanggal Transaksi</th>
                         </tr>
@@ -170,6 +176,7 @@
                                 <td>S-{{ str_pad((string) $row->id, 13, '0', STR_PAD_LEFT) }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
+                                <td>{{ $row->walletAccount?->name ?? '-' }}</td>
                                 <td>{{ ucfirst($row->type) }}</td>
                                 <td>Rp {{ number_format((float) $row->amount, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->transaction_date)->format('Y-m-d H:i:s') }}</td>
@@ -179,6 +186,7 @@
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
+                                <td>{{ $row->walletAccount?->name ?? '-' }}</td>
                                 <td>Rp {{ number_format((float) $row->principal_amount, 0, ',', '.') }}</td>
                                 <td>{{ number_format((float) $row->interest_percent, 2, ',', '.') }}%</td>
                                 <td>Rp {{ number_format((float) $row->admin_fee, 0, ',', '.') }}</td>
@@ -190,6 +198,7 @@
                                 <td>W-{{ str_pad((string) $row->id, 13, '0', STR_PAD_LEFT) }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
+                                <td>{{ $row->walletAccount?->name ?? '-' }}</td>
                                 <td>Rp {{ number_format(abs((float) $row->amount), 0, ',', '.') }}</td>
                                 <td>{{ $row->note ?: '-' }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->transaction_date)->format('Y-m-d H:i:s') }}</td>
@@ -199,6 +208,8 @@
                                 <td>A-{{ str_pad((string) $row->id, 13, '0', STR_PAD_LEFT) }}</td>
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
+                                <td>{{ $row->principalWalletAccount?->name ?? '-' }}</td>
+                                <td>{{ $row->incomeWalletAccount?->name ?? '-' }}</td>
                                 <td>{{ $row->installment_no }}</td>
                                 <td>Rp {{ number_format((float) $row->amount_total, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d H:i:s') }}</td>
@@ -209,6 +220,7 @@
                                 <td>{{ $row->loan_no }}</td>
                                 <td>{{ $row->member_no }}</td>
                                 <td>{{ $row->member_name }}</td>
+                                <td>{{ $row->incomeWalletAccount?->name ?? '-' }}</td>
                                 <td>Rp {{ number_format((float) $row->amount_interest, 0, ',', '.') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d H:i:s') }}</td>
                             </tr>
@@ -276,6 +288,16 @@
                         <div><strong>Status:</strong> <span data-field="status"></span></div>
                     </div>
                     <div class="form-group">
+                        <label>Dompet Penampungan</label>
+                        <select name="wallet_account_id" class="form-control" required>
+                            @foreach($walletReferences as $wallet)
+                                <option value="{{ $wallet->id }}" {{ (string) old('wallet_account_id', $defaultWallets['saving'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                    {{ $wallet->name }} ({{ $walletTypeOptions[$wallet->wallet_type] ?? ucfirst($wallet->wallet_type) }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Jenis Simpanan</label>
                         <select name="type" class="form-control" required>
                             <option value="pokok" {{ old('type', 'pokok') === 'pokok' ? 'selected' : '' }}>Simpanan Pokok</option>
@@ -338,6 +360,16 @@
                         <div><strong>Status:</strong> <span data-field="status"></span></div>
                     </div>
                     <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>Dompet Sumber Pencairan</label>
+                            <select name="wallet_account_id" class="form-control" required>
+                                @foreach($walletReferences as $wallet)
+                                    <option value="{{ $wallet->id }}" {{ (string) old('wallet_account_id', $defaultWallets['loan'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                        {{ $wallet->name }} ({{ $walletTypeOptions[$wallet->wallet_type] ?? ucfirst($wallet->wallet_type) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="form-group col-md-6">
                             <label>No Pinjaman</label>
                             <input type="text" name="loan_no" class="form-control" value="{{ old('loan_no') }}" required>
@@ -426,6 +458,16 @@
                         <div><strong>Status:</strong> <span data-field="status"></span></div>
                     </div>
                     <div class="form-group">
+                        <label>Dompet Sumber Withdraw</label>
+                        <select name="wallet_account_id" class="form-control" required>
+                            @foreach($walletReferences as $wallet)
+                                <option value="{{ $wallet->id }}" {{ (string) old('wallet_account_id', $defaultWallets['withdraw'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                    {{ $wallet->name }} ({{ $walletTypeOptions[$wallet->wallet_type] ?? ucfirst($wallet->wallet_type) }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Nominal Withdraw</label>
                         <input type="number" name="amount" min="1" class="form-control" value="{{ old('amount') }}" required>
                     </div>
@@ -483,6 +525,28 @@
                         <label>No Pinjaman (opsional jika hanya ada 1 pinjaman aktif)</label>
                         <input type="text" name="loan_no" class="form-control" list="loanReferenceList" value="{{ old('loan_no') }}" autocomplete="off">
                         <small class="text-muted">Isi bila member memiliki lebih dari satu pinjaman aktif.</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>Dompet Pokok Angsuran</label>
+                            <select name="principal_wallet_account_id" class="form-control" required>
+                                @foreach($walletReferences as $wallet)
+                                    <option value="{{ $wallet->id }}" {{ (string) old('principal_wallet_account_id', $defaultWallets['installment_principal'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                        {{ $wallet->name }} ({{ $walletTypeOptions[$wallet->wallet_type] ?? ucfirst($wallet->wallet_type) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Dompet Pendapatan</label>
+                            <select name="income_wallet_account_id" class="form-control" required>
+                                @foreach($walletReferences as $wallet)
+                                    <option value="{{ $wallet->id }}" {{ (string) old('income_wallet_account_id', $defaultWallets['installment_income'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                        {{ $wallet->name }} ({{ $walletTypeOptions[$wallet->wallet_type] ?? ucfirst($wallet->wallet_type) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Angsuran Ke (opsional)</label>

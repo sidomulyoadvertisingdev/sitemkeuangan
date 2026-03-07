@@ -135,6 +135,16 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
+                        <label>Dompet Penampungan</label>
+                        <select name="wallet_account_id" class="form-control" required>
+                            @foreach($walletReferences as $wallet)
+                                <option value="{{ $wallet->id }}" {{ (string) ($defaultWallets['saving'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                    {{ $wallet->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Jenis Simpanan</label>
                         <select name="type" class="form-control" required>
                             <option value="pokok">Simpanan Pokok</option>
@@ -177,6 +187,16 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>Dompet Sumber Pencairan</label>
+                            <select name="wallet_account_id" class="form-control" required>
+                                @foreach($walletReferences as $wallet)
+                                    <option value="{{ $wallet->id }}" {{ (string) ($defaultWallets['loan'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                        {{ $wallet->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="form-group col-md-6">
                             <label>No Pinjaman</label>
                             <input type="text" name="loan_no" class="form-control" required>
@@ -245,6 +265,16 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
+                        <label>Dompet Sumber Withdraw</label>
+                        <select name="wallet_account_id" class="form-control" required>
+                            @foreach($walletReferences as $wallet)
+                                <option value="{{ $wallet->id }}" {{ (string) ($defaultWallets['withdraw'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                    {{ $wallet->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Nominal Withdraw</label>
                         <input type="number" name="amount" min="1" class="form-control" required>
                     </div>
@@ -295,6 +325,7 @@
                                 <thead>
                                     <tr>
                                         <th>Tanggal</th>
+                                        <th>Dompet</th>
                                         <th>Jenis</th>
                                         <th>Nominal</th>
                                         <th>Catatan</th>
@@ -304,13 +335,14 @@
                                     @forelse($savings as $saving)
                                         <tr>
                                             <td>{{ \Carbon\Carbon::parse($saving->transaction_date)->format('d-m-Y') }}</td>
+                                            <td>{{ $saving->walletAccount?->name ?? '-' }}</td>
                                             <td>{{ ucfirst($saving->type) }}</td>
                                             <td>Rp {{ number_format($saving->amount,0,',','.') }}</td>
                                             <td>{{ $saving->note ?: '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="text-center text-muted">Belum ada transaksi simpanan.</td>
+                                            <td colspan="5" class="text-center text-muted">Belum ada transaksi simpanan.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -340,6 +372,7 @@
                                 </div>
 
                                 <div class="row mb-2">
+                                    <div class="col-md-4"><small>Dompet Sumber: <strong>{{ $loan->walletAccount?->name ?? '-' }}</strong></small></div>
                                     <div class="col-md-4"><small>Pokok: <strong>Rp {{ number_format($loan->principal_amount,0,',','.') }}</strong></small></div>
                                     <div class="col-md-4"><small>Total Tagihan: <strong>Rp {{ number_format($loan->total_bill_value,0,',','.') }}</strong></small></div>
                                     <div class="col-md-4"><small>Sisa: <strong>Rp {{ number_format($loan->remaining_value,0,',','.') }}</strong></small></div>
@@ -363,6 +396,26 @@
                                 <form method="POST" action="{{ route('koperasi.loans.installments.store', $loan) }}" class="mb-3">
                                     @csrf
                                     <div class="form-row">
+                                        <div class="form-group col-md-3">
+                                            <label>Dompet Pokok</label>
+                                            <select name="principal_wallet_account_id" class="form-control" required>
+                                                @foreach($walletReferences as $wallet)
+                                                    <option value="{{ $wallet->id }}" {{ (string) ($defaultWallets['installment_principal'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                                        {{ $wallet->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Dompet Pendapatan</label>
+                                            <select name="income_wallet_account_id" class="form-control" required>
+                                                @foreach($walletReferences as $wallet)
+                                                    <option value="{{ $wallet->id }}" {{ (string) ($defaultWallets['installment_income'] ?? '') === (string) $wallet->id ? 'selected' : '' }}>
+                                                        {{ $wallet->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                         <div class="form-group col-md-2">
                                             <label>Angsuran Ke</label>
                                             <input type="number"
@@ -405,7 +458,9 @@
                                                 <th>Tanggal</th>
                                                 <th>Nominal Wajib</th>
                                                 <th>Pokok</th>
+                                                <th>Dompet Pokok</th>
                                                 <th>Bunga</th>
+                                                <th>Dompet Pendapatan</th>
                                                 <th>Denda</th>
                                                 <th>Total</th>
                                                 <th>Status</th>
@@ -424,7 +479,9 @@
                                                     <td>{{ \Carbon\Carbon::parse($installment->paid_at)->format('d-m-Y') }}</td>
                                                     <td>Rp {{ number_format($installment->expected_amount ?? 0,0,',','.') }}</td>
                                                     <td>Rp {{ number_format($installment->amount_principal,0,',','.') }}</td>
+                                                    <td>{{ $installment->principalWalletAccount?->name ?? '-' }}</td>
                                                     <td>Rp {{ number_format($installment->amount_interest,0,',','.') }}</td>
+                                                    <td>{{ $installment->incomeWalletAccount?->name ?? '-' }}</td>
                                                     <td>Rp {{ number_format($installment->amount_penalty,0,',','.') }}</td>
                                                     <td>Rp {{ number_format($lineTotal,0,',','.') }}</td>
                                                     <td>
@@ -444,7 +501,7 @@
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="9" class="text-center text-muted">Belum ada angsuran.</td>
+                                                    <td colspan="11" class="text-center text-muted">Belum ada angsuran.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>

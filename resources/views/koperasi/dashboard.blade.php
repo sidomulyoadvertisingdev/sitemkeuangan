@@ -87,16 +87,13 @@
     @endforeach
 </div>
 
-<div class="koperasi-actions mb-4">
-    <a href="{{ route('koperasi.index') }}" class="btn btn-sm btn-outline-primary">
-        <i class="fas fa-users mr-1"></i> Data Member
-    </a>
-    <a href="{{ route('koperasi.create') }}" class="btn btn-sm btn-outline-success">
-        <i class="fas fa-user-plus mr-1"></i> Tambah Member
-    </a>
-    <a href="{{ route('koperasi.transactions', ['menu' => 'angsuran']) }}" class="btn btn-sm btn-outline-info">
-        <i class="fas fa-exchange-alt mr-1"></i> Transaction
-    </a>
+<div class="alert alert-light border mb-4">
+    Menu operasional koperasi sekarang dipusatkan di sidebar AdminLTE:
+    <strong>Daftar Member</strong>,
+    <strong>Tambah Member</strong>,
+    <strong>Transaction</strong>,
+    <strong>Laporan Keuangan</strong>,
+    dan <strong>Accounting</strong>.
 </div>
 
 <div class="row mb-4">
@@ -316,12 +313,6 @@
     .tone-emerald { background: linear-gradient(145deg, #dcfce7 0%, #bbf7d0 100%); }
     .tone-green { background: linear-gradient(145deg, #dcfce7 0%, #a7f3d0 100%); }
     .tone-red { background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%); }
-
-    .koperasi-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6rem;
-    }
 
     .section-card .card-header {
         border-bottom: 1px solid rgba(148, 163, 184, 0.25);

@@ -11,6 +11,7 @@ class KoperasiSaving extends Model
 
     protected $fillable = [
         'koperasi_member_id',
+        'wallet_account_id',
         'type',
         'amount',
         'transaction_date',
@@ -24,5 +25,10 @@ class KoperasiSaving extends Model
     public function member()
     {
         return $this->belongsTo(KoperasiMember::class, 'koperasi_member_id');
+    }
+
+    public function walletAccount()
+    {
+        return $this->belongsTo(KoperasiWalletAccount::class, 'wallet_account_id');
     }
 }

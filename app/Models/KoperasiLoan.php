@@ -11,6 +11,7 @@ class KoperasiLoan extends Model
 
     protected $fillable = [
         'koperasi_member_id',
+        'wallet_account_id',
         'loan_no',
         'principal_amount',
         'interest_percent',
@@ -35,5 +36,10 @@ class KoperasiLoan extends Model
     public function installments()
     {
         return $this->hasMany(KoperasiLoanInstallment::class);
+    }
+
+    public function walletAccount()
+    {
+        return $this->belongsTo(KoperasiWalletAccount::class, 'wallet_account_id');
     }
 }

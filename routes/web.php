@@ -11,6 +11,8 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvestmentController;
 use App\Http\Controllers\IuranController;
 use App\Http\Controllers\KoperasiController;
+use App\Http\Controllers\KoperasiFinanceController;
+use App\Http\Controllers\KoperasiWalletController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\AccountTransferController;
@@ -180,21 +182,24 @@ Route::middleware(['auth', 'active_account'])->group(function () {
         Route::post('iuran/{iuran}/installments', [IuranController::class, 'storeInstallment'])
             ->middleware('permission:iuran.manage')
             ->name('iuran.installments.store');
-        Route::resource('users', UserManagementController::class)
-            ->except(['show'])
-            ->middleware('permission:users.manage');
-        Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])
-            ->middleware('permission:users.manage')
-            ->name('users.approve');
-        Route::post('users/{user}/ban', [UserManagementController::class, 'ban'])
-            ->middleware('permission:users.manage')
-            ->name('users.ban');
-        Route::post('users/{user}/unban', [UserManagementController::class, 'unban'])
-            ->middleware('permission:users.manage')
-            ->name('users.unban');
     });
 
     Route::middleware('app_mode:cooperative')->group(function () {
+        Route::get('koperasi/laporan-keuangan', [KoperasiFinanceController::class, 'report'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.finance.report');
+        Route::get('koperasi/accounting', [KoperasiFinanceController::class, 'accounting'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.finance.accounting');
+        Route::post('koperasi/wallets', [KoperasiWalletController::class, 'store'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.wallets.store');
+        Route::put('koperasi/wallets/{wallet}', [KoperasiWalletController::class, 'update'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.wallets.update');
+        Route::delete('koperasi/wallets/{wallet}', [KoperasiWalletController::class, 'destroy'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.wallets.destroy');
         Route::get('koperasi/transaksi/{menu}', [KoperasiController::class, 'transactions'])
             ->where('menu', 'simpan|pinjam|withdraw|angsuran|bagi-hasil')
             ->middleware('permission:koperasi.manage')
@@ -235,6 +240,19 @@ Route::middleware(['auth', 'active_account'])->group(function () {
             ->middleware('permission:koperasi.manage')
             ->name('koperasi.loans.installments.store');
     });
+
+    Route::resource('users', UserManagementController::class)
+        ->except(['show'])
+        ->middleware('permission:users.manage');
+    Route::post('users/{user}/approve', [UserManagementController::class, 'approve'])
+        ->middleware('permission:users.manage')
+        ->name('users.approve');
+    Route::post('users/{user}/ban', [UserManagementController::class, 'ban'])
+        ->middleware('permission:users.manage')
+        ->name('users.ban');
+    Route::post('users/{user}/unban', [UserManagementController::class, 'unban'])
+        ->middleware('permission:users.manage')
+        ->name('users.unban');
 
     /*
     |--------------------------------------------------------------------------
