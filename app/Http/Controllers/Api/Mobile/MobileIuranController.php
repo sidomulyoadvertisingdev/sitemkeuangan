@@ -66,13 +66,21 @@ class MobileIuranController extends Controller
         }
 
         if ($this->isRestrictedOfficer($actor) && $hasAssignmentTable) {
-            $membersQuery->whereExists(function ($query) use ($actor, $tenantId) {
-                $query->select(DB::raw(1))
-                    ->from('project_iuran_assignments')
-                    ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
-                    ->whereColumn('project_iuran_assignments.iuran_member_id', 'iuran_members.id')
-                    ->where('project_iuran_assignments.officer_user_id', $actor->id)
-                    ->where('projects.user_id', $tenantId);
+            $membersQuery->where(function ($query) use ($actor, $tenantId) {
+                $query->whereExists(function ($assignmentQuery) use ($actor, $tenantId) {
+                    $assignmentQuery->select(DB::raw(1))
+                        ->from('project_iuran_assignments')
+                        ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
+                        ->whereColumn('project_iuran_assignments.iuran_member_id', 'iuran_members.id')
+                        ->where('project_iuran_assignments.officer_user_id', $actor->id)
+                        ->where('projects.user_id', $tenantId);
+                })->orWhereNotExists(function ($assignmentQuery) use ($tenantId) {
+                    $assignmentQuery->select(DB::raw(1))
+                        ->from('project_iuran_assignments')
+                        ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
+                        ->whereColumn('project_iuran_assignments.iuran_member_id', 'iuran_members.id')
+                        ->where('projects.user_id', $tenantId);
+                });
             });
         }
 
@@ -214,13 +222,16 @@ class MobileIuranController extends Controller
             });
 
         if ($this->isRestrictedOfficer($actor) && Schema::hasTable('project_iuran_assignments')) {
-            $rowsQuery->whereExists(function ($query) use ($actor, $tenantId) {
-                $query->select(DB::raw(1))
-                    ->from('project_iuran_assignments')
-                    ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
-                    ->whereColumn('project_iuran_assignments.iuran_member_id', 'iuran_installments.iuran_member_id')
-                    ->where('project_iuran_assignments.officer_user_id', $actor->id)
-                    ->where('projects.user_id', $tenantId);
+            $rowsQuery->where(function ($query) use ($actor, $tenantId) {
+                $query->where('iuran_installments.officer_user_id', $actor->id)
+                    ->orWhereExists(function ($assignmentQuery) use ($actor, $tenantId) {
+                        $assignmentQuery->select(DB::raw(1))
+                            ->from('project_iuran_assignments')
+                            ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
+                            ->whereColumn('project_iuran_assignments.iuran_member_id', 'iuran_installments.iuran_member_id')
+                            ->where('project_iuran_assignments.officer_user_id', $actor->id)
+                            ->where('projects.user_id', $tenantId);
+                    });
             });
         }
 
@@ -275,7 +286,13 @@ class MobileIuranController extends Controller
                 ->orderByDesc('project_iuran_assignments.id')
                 ->value('project_iuran_assignments.project_id');
 
-            if (!$assignmentProjectId) {
+            $hasAnyAssignment = ProjectIuranAssignment::query()
+                ->join('projects', 'projects.id', '=', 'project_iuran_assignments.project_id')
+                ->where('project_iuran_assignments.iuran_member_id', $member->id)
+                ->where('projects.user_id', $tenantId)
+                ->exists();
+
+            if (!$assignmentProjectId && $hasAnyAssignment) {
                 return response()->json([
                     'message' => 'Anggota ini belum ditugaskan ke Anda.',
                 ], 403);
