@@ -92,6 +92,40 @@ class MobileIuranController extends Controller
         ]);
     }
 
+    public function storeMember(Request $request): JsonResponse
+    {
+        $accessError = $this->ensureIuranAccess($request->user());
+        if ($accessError !== null) {
+            return $accessError;
+        }
+
+        $tenantId = $request->user()->tenantUserId();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'target_amount' => ['required', 'numeric', 'min:1'],
+            'target_start_year' => ['required', 'integer', 'min:2000'],
+            'target_end_year' => ['required', 'integer', 'gte:target_start_year'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $member = IuranMember::create([
+            'user_id' => (int) $tenantId,
+            'name' => trim((string) $validated['name']),
+            'target_amount' => (float) $validated['target_amount'],
+            'target_start_year' => (int) $validated['target_start_year'],
+            'target_end_year' => (int) $validated['target_end_year'],
+            'status' => 'aktif',
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        $member->loadSum('installments as paid_amount', 'amount');
+
+        return response()->json([
+            'message' => 'Anggota iuran berhasil ditambahkan.',
+            'member' => $this->transformMember($member),
+        ], 201);
+    }
+
     public function options(Request $request): JsonResponse
     {
         $accessError = $this->ensureIuranAccess($request->user());
@@ -360,14 +394,26 @@ class MobileIuranController extends Controller
         }
 
         $actor = $request->user();
-        if (!$this->isRestrictedOfficer($actor)) {
-            return response()->json([
-                'message' => 'Fitur dompet petugas khusus untuk user petugas.',
-            ], 403);
+        $tenantId = $actor->tenantUserId();
+
+        if ($this->isRestrictedOfficer($actor)) {
+            $wallet = $this->officerWalletService->resolveForUser($actor);
+        } else {
+            $wallet = BankAccount::query()
+                ->where('user_id', $tenantId)
+                ->where('account_kind', BankAccount::KIND_GENERAL)
+                ->whereNull('owner_user_id')
+                ->orderByDesc('is_default')
+                ->orderBy('id')
+                ->first();
+
+            if (!$wallet) {
+                return response()->json([
+                    'message' => 'Dompet penampung super admin belum tersedia.',
+                ], 404);
+            }
         }
 
-        $tenantId = $actor->tenantUserId();
-        $wallet = $this->officerWalletService->resolveForUser($actor);
         $adminAccounts = $this->officerWalletService->adminAccounts((int) $tenantId)
             ->map(function (BankAccount $account) {
                 return [
