@@ -104,7 +104,15 @@ class MobileAuthController extends Controller
             : ($user->permissions ?? []);
 
         $role = 'anggota_penabung';
-        if ($user->isCooperativeMode()) {
+
+        if (
+            $user->is_admin ||
+            $user->is_platform_admin ||
+            in_array('users.manage', $permissions, true) ||
+            in_array('projects.manage', $permissions, true)
+        ) {
+            $role = 'super_admin';
+        } elseif ($user->isCooperativeMode()) {
             $role = in_array('koperasi.manage', $permissions, true)
                 ? 'petugas_koperasi'
                 : 'anggota_penabung';
