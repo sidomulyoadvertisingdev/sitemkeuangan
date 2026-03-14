@@ -96,34 +96,63 @@
             <tbody>
                 @forelse($members as $member)
                     <tr>
-                        <td>{{ $member->member_no }}</td>
+                        <td>{{ $member->member_no ?? '—' }}</td>
                         <td>{{ $member->name }}</td>
-                        <td>{{ \Carbon\Carbon::parse($member->join_date)->format('d-m-Y') }}</td>
+                        <td>{{ optional($member->join_date)->format('d-m-Y') ?? '—' }}</td>
                         <td>Rp {{ number_format($member->savings_total ?? 0,0,',','.') }}</td>
                         <td>Rp {{ number_format($member->loan_disbursed,0,',','.') }}</td>
                         <td>Rp {{ number_format($member->loan_outstanding,0,',','.') }}</td>
                         <td>
-                            <span class="badge {{ $member->status === 'aktif' ? 'badge-success' : 'badge-secondary' }}">
-                                {{ ucfirst($member->status) }}
-                            </span>
+                            @php
+                                $isPending = empty($member->member_no) && $member->status === 'nonaktif';
+                                $isRejected = !$isPending && ($member->status === 'nonaktif');
+                            @endphp
+                            @if($isPending)
+                                <span class="badge badge-warning">Menunggu review</span>
+                            @elseif($member->status === 'aktif')
+                                <span class="badge badge-success">Aktif</span>
+                            @else
+                                <span class="badge badge-secondary">Nonaktif</span>
+                            @endif
+                            @if($member->note)
+                                <div class="small text-muted">{{ $member->note }}</div>
+                            @endif
                         </td>
                         <td>
-                            <a href="{{ route('koperasi.show', $member) }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="{{ route('koperasi.edit', $member) }}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form action="{{ route('koperasi.destroy', $member) }}"
-                                  method="POST"
-                                  class="d-inline"
-                                  onsubmit="return confirm('Hapus member ini?')">
-                                @csrf
-                                @method('DELETE')
-                                <button class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                            @if($isPending)
+                                <form action="{{ route('koperasi.approve', $member) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-success btn-sm" title="Setujui">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+                                <form action="{{ route('koperasi.reject', $member) }}"
+                                      method="POST"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Tolak pengajuan member ini?');">
+                                    @csrf
+                                    <button class="btn btn-outline-danger btn-sm" title="Tolak">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            @else
+                                <a href="{{ route('koperasi.show', $member) }}" class="btn btn-primary btn-sm" title="Detail">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ route('koperasi.edit', $member) }}" class="btn btn-warning btn-sm" title="Ubah">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ route('koperasi.destroy', $member) }}"
+                                      method="POST"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Hapus member ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-danger btn-sm" title="Hapus">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty

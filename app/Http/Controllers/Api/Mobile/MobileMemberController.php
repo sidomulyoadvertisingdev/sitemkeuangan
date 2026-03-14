@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\KoperasiMember;
 use App\Models\KoperasiSaving;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class MobileMemberController extends Controller
 {
@@ -71,7 +73,73 @@ class MobileMemberController extends Controller
         );
     }
 
-    private function ensureMemberAccess(?User $user): ?JsonResponse
+    public function verify(Request $request): JsonResponse
+    {
+        $accessError = $this->ensureMemberAccess($request->user(), true);
+        if ($accessError !== null) {
+            return $accessError;
+        }
+
+        if (!$request->user()->isCooperativeMode()) {
+            return response()->json(['message' => 'Verifikasi hanya untuk mode koperasi.'], 403);
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'nik' => ['required', 'string', 'max:30'],
+            'gender' => ['required', 'string', 'in:L,P'],
+            'phone' => ['required', 'string', 'max:30'],
+            'address' => ['required', 'string'],
+        ]);
+
+        $tenantId = (int) $request->user()->tenantUserId();
+        $member = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where('account_user_id', $request->user()->id)
+            ->orderBy('id')
+            ->first();
+
+        if (!$member) {
+            $member = KoperasiMember::create([
+                'user_id' => $tenantId,
+                'account_user_id' => $request->user()->id,
+                'member_no' => null, // nomor rekening dihasilkan setelah disetujui admin
+                'name' => $data['name'],
+                'nik' => $data['nik'],
+                'gender' => $data['gender'],
+                'phone' => $data['phone'],
+                'address' => $data['address'],
+                'join_date' => null,
+                'status' => 'nonaktif', // menunggu persetujuan admin koperasi
+            ]);
+        } else {
+            $member->fill(Arr::only($data, ['name', 'nik', 'gender', 'phone', 'address']));
+            $member->status = 'nonaktif';
+            // join_date dan member_no akan diisi setelah disetujui admin
+            $member->save();
+        }
+
+        return response()->json([
+            'message' => 'Verifikasi dikirim dan menunggu persetujuan admin koperasi.',
+            'member' => [
+                'id' => $member->id,
+                'member_no' => $member->member_no,
+                'name' => $member->name,
+                'status' => $member->status,
+                'join_date' => optional($member->join_date)->toDateString(),
+            ],
+            'user' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'organization_name' => $request->user()->organization_name,
+                'account_mode' => $request->user()->account_mode,
+                'account_status' => $request->user()->account_status,
+            ],
+        ]);
+    }
+
+    private function ensureMemberAccess(?User $user, bool $allowPending = false): ?JsonResponse
     {
         if (!$user) {
             return response()->json([
@@ -79,7 +147,7 @@ class MobileMemberController extends Controller
             ], 401);
         }
 
-        if (!$user->isApproved()) {
+        if (!$allowPending && !$user->isApproved()) {
             return response()->json([
                 'message' => 'Akun belum aktif untuk mengakses aplikasi mobile.',
             ], 403);
@@ -105,9 +173,20 @@ class MobileMemberController extends Controller
 
     private function buildCooperativeSummary(int $tenantId): array
     {
+        $member = $this->resolveSelfMember($tenantId);
+        if (!$member) {
+            return [
+                'savings_balance' => 0,
+                'total_savings' => 0,
+                'total_withdrawals' => 0,
+                'last_transaction_at' => null,
+            ];
+        }
+
         $query = KoperasiSaving::query()
             ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_savings.koperasi_member_id')
-            ->where('koperasi_members.user_id', $tenantId);
+            ->where('koperasi_members.user_id', $tenantId)
+            ->where('koperasi_members.id', $member->id);
 
         $totalSavings = (float) (clone $query)->where('koperasi_savings.amount', '>', 0)->sum('koperasi_savings.amount');
         $withdrawalsRaw = (float) (clone $query)->where('koperasi_savings.amount', '<', 0)->sum('koperasi_savings.amount');
@@ -133,9 +212,13 @@ class MobileMemberController extends Controller
 
     private function cooperativeTransactionsQuery(int $tenantId)
     {
+        $member = $this->resolveSelfMember($tenantId);
+        $memberId = $member?->id ?? 0;
+
         return KoperasiSaving::query()
             ->join('koperasi_members', 'koperasi_members.id', '=', 'koperasi_savings.koperasi_member_id')
             ->where('koperasi_members.user_id', $tenantId)
+            ->where('koperasi_members.id', $memberId)
             ->select(
                 'koperasi_savings.id',
                 'koperasi_savings.type',
@@ -172,5 +255,38 @@ class MobileMemberController extends Controller
             'description' => $row->member_name ?? null,
             'note' => $row->note,
         ];
+    }
+
+    private function resolveSelfMember(int $tenantId): ?KoperasiMember
+    {
+        $userId = auth()->id();
+        if (!$userId) {
+            return null;
+        }
+
+        $member = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where('account_user_id', $userId)
+            ->orderBy('id')
+            ->first();
+        if ($member) {
+            return $member;
+        }
+
+        $unbound = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->whereNull('account_user_id')
+            ->withSum('savings as total_savings', 'amount')
+            ->orderByDesc('total_savings')
+            ->orderBy('id')
+            ->first();
+
+        if ($unbound) {
+            $unbound->account_user_id = $userId;
+            $unbound->save();
+            return $unbound;
+        }
+
+        return null;
     }
 }

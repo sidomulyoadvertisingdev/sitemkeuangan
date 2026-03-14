@@ -216,6 +216,24 @@ Route::middleware(['auth', 'active_account'])->group(function () {
         Route::post('koperasi/transaksi/angsuran', [KoperasiController::class, 'storeInstallmentFromTransaction'])
             ->middleware('permission:koperasi.manage')
             ->name('koperasi.transactions.angsuran.store');
+
+        // Review topup manual anggota (letakkan sebelum resource koperasi agar tidak tertabrak {koperasi})
+        Route::get('koperasi/topups', [KoperasiController::class, 'topups'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.topups.index');
+        Route::post('koperasi/topups/{transfer}/approve', [KoperasiController::class, 'approveTopup'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.topups.approve');
+        Route::post('koperasi/topups/{transfer}/cancel', [KoperasiController::class, 'cancelTopup'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.topups.cancel');
+
+        Route::post('koperasi/{koperasi}/approve', [KoperasiController::class, 'approve'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.approve');
+        Route::post('koperasi/{koperasi}/reject', [KoperasiController::class, 'reject'])
+            ->middleware('permission:koperasi.manage')
+            ->name('koperasi.reject');
         Route::get('koperasi/export/pdf', [KoperasiController::class, 'exportPdf'])
             ->middleware('permission:koperasi.manage')
             ->name('koperasi.export.pdf');
@@ -239,6 +257,13 @@ Route::middleware(['auth', 'active_account'])->group(function () {
         Route::post('koperasi/loans/{loan}/installments', [KoperasiController::class, 'storeInstallment'])
             ->middleware('permission:koperasi.manage')
             ->name('koperasi.loans.installments.store');
+
+        // Dompet & Rekening untuk koperasi (buat rekening admin/topup)
+        Route::resource('bank-accounts', BankAccountController::class)
+            ->middleware('permission:bank_accounts.manage');
+        Route::post('bank-accounts/transfer-balance', [BankAccountController::class, 'transferBalance'])
+            ->middleware('permission:bank_accounts.manage')
+            ->name('bank-accounts.transfer-balance');
     });
 
     Route::resource('users', UserManagementController::class)

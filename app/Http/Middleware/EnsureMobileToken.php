@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\MobileAccessToken;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureMobileToken
@@ -52,6 +53,9 @@ class EnsureMobileToken
         $accessToken->forceFill([
             'last_used_at' => now(),
         ])->save();
+
+        // Pastikan facade Auth mengenal user ini (untuk helper auth())
+        Auth::setUser($user);
 
         $request->attributes->set('mobile_access_token', $accessToken);
         $request->setUserResolver(static fn () => $user);

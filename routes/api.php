@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Mobile\MobileAuthController;
+use App\Http\Controllers\Api\Mobile\MobileWalletController;
 use App\Http\Controllers\Api\Mobile\MobileIuranController;
 use App\Http\Controllers\Api\Mobile\MobileKoperasiController;
 use App\Http\Controllers\Api\Mobile\MobileMemberController;
@@ -8,15 +9,23 @@ use App\Http\Controllers\Api\Mobile\MobileSuperAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('mobile')->group(function () {
+    Route::post('/register', [MobileAuthController::class, 'register']);
     Route::post('/login', [MobileAuthController::class, 'login']);
 
     Route::middleware('mobile_token')->group(function () {
         Route::get('/me', [MobileAuthController::class, 'me']);
         Route::post('/logout', [MobileAuthController::class, 'logout']);
+        Route::get('/wallet/account-lookup', [MobileWalletController::class, 'lookupAccount']);
+        Route::post('/wallet/topup', [MobileWalletController::class, 'topup']);
+        Route::post('/wallet/topup-proof', [MobileWalletController::class, 'uploadTopupProof']);
+        Route::post('/wallet/transfer', [MobileWalletController::class, 'transfer']);
+        Route::post('/wallet/request', [MobileWalletController::class, 'requestFunds']);
+        Route::get('/wallet/notifications', [MobileWalletController::class, 'notifications']);
 
         Route::get('/member/dashboard', [MobileMemberController::class, 'dashboard']);
         Route::get('/member/transactions', [MobileMemberController::class, 'transactions']);
         Route::get('/member/transactions/{transactionId}', [MobileMemberController::class, 'showTransaction']);
+        Route::post('/member/verify', [MobileMemberController::class, 'verify']);
 
         Route::get('/super-admin/members', [MobileSuperAdminController::class, 'members']);
         Route::post('/super-admin/members', [MobileSuperAdminController::class, 'storeMember']);
@@ -38,6 +47,8 @@ Route::prefix('mobile')->group(function () {
         Route::delete('/super-admin/wallets/{wallet}', [MobileSuperAdminController::class, 'destroyWallet']);
         Route::get('/super-admin/transfers', [MobileSuperAdminController::class, 'transfers']);
         Route::post('/super-admin/transfers', [MobileSuperAdminController::class, 'storeTransfer']);
+        Route::post('/super-admin/topups/{request}/approve', [MobileSuperAdminController::class, 'approveTopup'])
+            ->whereNumber('request');
         Route::get('/super-admin/budgets', [MobileSuperAdminController::class, 'budgets']);
         Route::post('/super-admin/budgets', [MobileSuperAdminController::class, 'storeBudget']);
         Route::put('/super-admin/budgets/{budget}', [MobileSuperAdminController::class, 'updateBudget']);

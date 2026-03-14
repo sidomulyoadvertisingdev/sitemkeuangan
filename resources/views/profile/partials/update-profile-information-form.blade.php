@@ -47,6 +47,32 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label :value="__('User ID Koperasi')" />
+            <x-text-input
+                type="text"
+                class="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
+                :value="$user->data_owner_user_id ?: $user->id"
+                disabled
+            />
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ __('ID pemilik koperasi tempat akun ini terdaftar.') }}
+            </p>
+        </div>
+
+        <div>
+            <x-input-label :value="__('Kode Koperasi')" />
+            <x-text-input
+                type="text"
+                class="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
+                :value="$user->cooperative_code ?? '-'"
+                disabled
+            />
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ __('Kode unik koperasi ini. Berbagi kode ini ke anggota saat pendaftaran.') }}
+            </p>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

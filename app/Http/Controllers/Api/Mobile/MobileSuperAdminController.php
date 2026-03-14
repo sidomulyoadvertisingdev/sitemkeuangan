@@ -11,9 +11,13 @@ use App\Models\Debt;
 use App\Models\DebtInstallment;
 use App\Models\IuranInstallment;
 use App\Models\IuranMember;
+use App\Models\KoperasiMember;
+use App\Models\KoperasiSaving;
+use App\Models\MobileTransferRequest;
 use App\Models\Project;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\KoperasiWalletService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -261,6 +265,37 @@ class MobileSuperAdminController extends Controller
         }
 
         $isActive = $member->account_status !== User::STATUS_APPROVED;
+
+        // cari / buat record anggota koperasi untuk user ini
+        $koperasiMember = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where('account_user_id', $member->id)
+            ->first();
+
+        if (!$koperasiMember) {
+            $koperasiMember = KoperasiMember::create([
+                'user_id' => $tenantId,
+                'account_user_id' => $member->id,
+                'status' => $isActive ? 'aktif' : 'nonaktif',
+                'member_no' => null,
+                'join_date' => null,
+                'name' => $member->name,
+            ]);
+        }
+
+        if ($isActive) {
+            if (empty($koperasiMember->member_no)) {
+                $koperasiMember->member_no = KoperasiMember::generateUniqueAccountNumber();
+            }
+            if (!$koperasiMember->join_date) {
+                $koperasiMember->join_date = now();
+            }
+            $koperasiMember->status = 'aktif';
+        } else {
+            $koperasiMember->status = 'nonaktif';
+        }
+        $koperasiMember->save();
+
         $member->update([
             'account_status' => $isActive ? User::STATUS_APPROVED : User::STATUS_BANNED,
             'approved_at' => $isActive ? now() : $member->approved_at,
@@ -1538,6 +1573,74 @@ class MobileSuperAdminController extends Controller
                 'amount' => 'Nilai transaksi melebihi limit budget kategori ini.',
             ]);
         }
+    }
+
+    public function approveTopup(Request $request, MobileTransferRequest $transfer): JsonResponse
+    {
+        $accessError = $this->ensureSuperAdminAccess($request->user());
+        if ($accessError !== null) {
+            return $accessError;
+        }
+
+        $tenantId = (int) $request->user()->tenantUserId();
+
+        if (
+            (int) $transfer->user_id !== $tenantId ||
+            $transfer->kind !== 'topup' ||
+            $transfer->status !== 'pending'
+        ) {
+            return response()->json(['message' => 'Permintaan topup tidak valid atau sudah diproses.'], 422);
+        }
+
+        $member = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where('id', $transfer->requester_member_id)
+            ->first();
+
+        if (!$member) {
+            return response()->json(['message' => 'Member terkait topup tidak ditemukan.'], 404);
+        }
+
+        $walletService = app(KoperasiWalletService::class);
+        $defaultMap = $walletService->defaultWalletMap($tenantId);
+        $wallet = $walletService->resolveOwnedWallet($defaultMap['saving'] ?? null, $tenantId)
+            ?? $walletService->ensureInitialWallets($tenantId)->first();
+
+        if (!$wallet) {
+            return response()->json(['message' => 'Dompet simpanan belum tersedia.'], 422);
+        }
+
+        $note = trim((string) $request->input('note', 'Topup manual #' . $transfer->id));
+        $now = now();
+
+        DB::transaction(function () use ($transfer, $member, $wallet, $note, $now) {
+            KoperasiSaving::create([
+                'koperasi_member_id' => $member->id,
+                'wallet_account_id' => $wallet->id,
+                'type' => 'topup_manual',
+                'amount' => (float) $transfer->amount,
+                'transaction_date' => $now,
+                'note' => $note,
+            ]);
+
+            $transfer->update([
+                'status' => 'completed',
+                'approved_at' => $now,
+                'approved_by_user_id' => auth()->id(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Topup disetujui dan saldo masuk.',
+            'topup' => [
+                'id' => (int) $transfer->id,
+                'amount' => (float) $transfer->amount,
+                'unique_code' => $transfer->unique_code,
+                'pay_amount' => (float) $transfer->pay_amount,
+                'status' => 'completed',
+                'approved_at' => $now->toIso8601String(),
+            ],
+        ]);
     }
 
     private function ensureDefaultCategories(int $tenantId): void

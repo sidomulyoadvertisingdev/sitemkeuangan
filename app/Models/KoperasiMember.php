@@ -13,6 +13,7 @@ class KoperasiMember extends Model
 
     protected $fillable = [
         'user_id',
+        'account_user_id',
         'member_no',
         'name',
         'nik',
@@ -31,7 +32,7 @@ class KoperasiMember extends Model
     protected static function booted(): void
     {
         static::creating(function (self $member): void {
-            if (empty($member->member_no)) {
+            if (empty($member->member_no) && $member->status === 'aktif') {
                 $member->member_no = self::generateUniqueAccountNumber();
             }
         });

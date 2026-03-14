@@ -21,6 +21,11 @@ class EnsureAccountMode
             abort(403, 'Mode aplikasi tidak valid.');
         }
 
+        // Platform admin atau user yang punya izin koperasi.manage boleh melewati pembatasan mode
+        if ($user->is_platform_admin || $user->hasPermission('koperasi.manage')) {
+            return $next($request);
+        }
+
         if ($user->account_mode !== $mode) {
             $targetRoute = $user->isCooperativeMode() ? 'koperasi.dashboard' : 'dashboard';
 

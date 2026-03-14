@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\IuranMember;
+use App\Models\KoperasiMember;
+use App\Models\KoperasiSaving;
+use App\Services\KoperasiWalletService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -82,7 +85,7 @@ class UserManagementController extends Controller
             'organization_name' => 'required|string|max:150',
             'account_mode' => 'nullable|string|in:organization,cooperative',
             'user_role_template' => 'nullable|string|in:custom,admin,petugas_iuran,anggota',
-            'iuran_target_amount' => 'nullable|numeric|min:1',
+            'iuran_target_amount' => 'nullable|numeric|min:0',
             'iuran_target_start_year' => 'nullable|integer|min:2000|max:2100',
             'iuran_target_end_year' => 'nullable|integer|min:2000|max:2100|gte:iuran_target_start_year',
             'email' => 'required|email|max:255|unique:users,email',
@@ -158,6 +161,7 @@ class UserManagementController extends Controller
         }
 
         $this->syncIuranMemberFromUserTemplate($user, $roleTemplate, $validated);
+        $this->syncCoopMemberWithInitialDeposit($user, $validated);
 
         return redirect()
             ->route('users.index')
@@ -296,6 +300,7 @@ class UserManagementController extends Controller
 
         $user->update($data);
         $this->syncIuranMemberFromUserTemplate($user, $roleTemplate, $validated, $oldName);
+        $this->syncCoopMemberWithInitialDeposit($user, $validated, $oldName);
 
         return redirect()
             ->route('users.index')
@@ -653,5 +658,69 @@ class UserManagementController extends Controller
             'target_end_year' => $targetEndYear,
             'status' => $paid >= $targetAmount ? 'lunas' : 'aktif',
         ]);
+    }
+
+    private function syncCoopMemberWithInitialDeposit(
+        User $user,
+        array $validated,
+        ?string $oldName = null
+    ): void {
+        if ($user->account_mode !== User::MODE_COOPERATIVE) {
+            return;
+        }
+
+        $tenantId = $user->tenantUserId();
+        if (!$tenantId) {
+            return;
+        }
+
+        $initialDeposit = max(0, (float) ($validated['iuran_target_amount'] ?? 0));
+
+        $member = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where(function ($q) use ($user, $oldName) {
+                if ($oldName) {
+                    $q->where('name', $oldName);
+                }
+                $q->orWhere('account_user_id', $user->id);
+                $q->orWhere('name', $user->name);
+            })
+            ->first();
+
+        if (!$member) {
+            $member = KoperasiMember::create([
+                'user_id' => $tenantId,
+                'account_user_id' => $user->id,
+                'member_no' => KoperasiMember::generateUniqueAccountNumber(),
+                'name' => $user->name,
+                'status' => 'aktif',
+                'join_date' => now(),
+            ]);
+        } else {
+            $member->update(['name' => $user->name]);
+            if (!$member->member_no) {
+                $member->member_no = KoperasiMember::generateUniqueAccountNumber();
+                $member->save();
+            }
+        }
+
+        if ($initialDeposit > 0) {
+            /** @var KoperasiWalletService $walletService */
+            $walletService = app(KoperasiWalletService::class);
+            $defaultMap = $walletService->defaultWalletMap($tenantId);
+            $wallet = $walletService->resolveOwnedWallet($defaultMap['saving'] ?? null, $tenantId)
+                ?? $walletService->ensureInitialWallets($tenantId)->first();
+
+            if ($wallet) {
+                KoperasiSaving::create([
+                    'koperasi_member_id' => $member->id,
+                    'wallet_account_id' => $wallet->id,
+                    'type' => 'setoran_awal',
+                    'amount' => $initialDeposit,
+                    'transaction_date' => now(),
+                    'note' => 'Setoran awal anggota baru',
+                ]);
+            }
+        }
     }
 }

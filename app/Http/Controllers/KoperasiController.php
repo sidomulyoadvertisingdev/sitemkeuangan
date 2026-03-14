@@ -7,6 +7,8 @@ use App\Models\KoperasiLoanInstallment;
 use App\Models\KoperasiMember;
 use App\Models\KoperasiSaving;
 use App\Models\KoperasiWalletAccount;
+use App\Models\MobileTransferRequest;
+use App\Models\User;
 use Carbon\Carbon;
 use App\Services\KoperasiWalletService;
 use Illuminate\Http\Request;
@@ -660,6 +662,75 @@ class KoperasiController extends Controller
         return redirect()
             ->route('koperasi.index')
             ->with('success', 'Member koperasi berhasil dihapus.');
+    }
+
+    public function approve(KoperasiMember $koperasi)
+    {
+        $this->ensureMemberOwner($koperasi);
+
+        DB::transaction(function () use ($koperasi) {
+            if (empty($koperasi->member_no)) {
+                $koperasi->member_no = KoperasiMember::generateUniqueAccountNumber();
+            }
+            if (!$koperasi->join_date) {
+                $koperasi->join_date = now();
+            }
+            $koperasi->status = 'aktif';
+            $koperasi->note = null;
+            $koperasi->save();
+
+            if ($koperasi->account_user_id) {
+                $user = User::find($koperasi->account_user_id);
+                if ($user) {
+                    $user->update([
+                        'account_status' => User::STATUS_APPROVED,
+                        'approved_at' => $user->approved_at ?? now(),
+                        'approved_by' => $user->approved_by ?? auth()->id(),
+                        'banned_at' => null,
+                        'banned_reason' => null,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()
+            ->route('koperasi.index')
+            ->with('success', 'Pengajuan member disetujui.');
+    }
+
+    public function reject(Request $request, KoperasiMember $koperasi)
+    {
+        $this->ensureMemberOwner($koperasi);
+
+        $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($koperasi, $request) {
+            $koperasi->status = 'nonaktif';
+            $koperasi->note = $request->reason ?: 'Ditolak admin koperasi.';
+            // nomor rekening tidak diaktifkan untuk yang ditolak
+            $koperasi->member_no = null;
+            $koperasi->join_date = null;
+            $koperasi->save();
+
+            if ($koperasi->account_user_id) {
+                $user = User::find($koperasi->account_user_id);
+                if ($user) {
+                    $user->update([
+                        'account_status' => User::STATUS_PENDING,
+                        'approved_at' => null,
+                        'approved_by' => null,
+                        'banned_at' => null,
+                        'banned_reason' => $koperasi->note,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()
+            ->route('koperasi.index')
+            ->with('success', 'Pengajuan member ditolak.');
     }
 
     public function storeSaving(Request $request, KoperasiMember $koperasi)
@@ -1512,5 +1583,98 @@ class KoperasiController extends Controller
             ['\\\\', '\(', '\)'],
             $text
         );
+    }
+
+    /**
+     * Review permintaan topup manual anggota.
+     */
+    public function topups()
+    {
+        $tenantId = auth()->user()->tenantUserId();
+
+        $pending = MobileTransferRequest::query()
+            ->with(['requesterMember:id,name,member_no'])
+            ->where('user_id', $tenantId)
+            ->where('kind', 'topup')
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        $history = MobileTransferRequest::query()
+            ->with(['requesterMember:id,name,member_no'])
+            ->where('user_id', $tenantId)
+            ->where('kind', 'topup')
+            ->whereIn('status', ['completed', 'rejected'])
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        return view('koperasi.topups', compact('pending', 'history'));
+    }
+
+    /**
+     * Admin menyetujui topup -> saldo masuk.
+     */
+    public function approveTopup(Request $request, MobileTransferRequest $transfer)
+    {
+        $tenantId = auth()->user()->tenantUserId();
+
+        abort_if((int) $transfer->user_id !== $tenantId, 404);
+        abort_if($transfer->kind !== 'topup' || $transfer->status !== 'pending', 422, 'Topup tidak valid atau sudah diproses.');
+
+        $request->validate([
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $member = $transfer->requesterMember ?? KoperasiMember::find($transfer->requester_member_id);
+        if (!$member || (int) $member->user_id !== $tenantId) {
+            return back()->withErrors(['topup' => 'Member terkait topup tidak ditemukan.']);
+        }
+
+        $wallet = $this->walletService->ensureInitialWallets($tenantId)->first();
+        if (!$wallet) {
+            return back()->withErrors(['topup' => 'Dompet simpanan belum tersedia.']);
+        }
+
+        $note = trim((string) $request->input('note', 'Topup manual #' . $transfer->id));
+        $now = now();
+
+        DB::transaction(function () use ($transfer, $member, $wallet, $note, $now) {
+            KoperasiSaving::create([
+                'koperasi_member_id' => $member->id,
+                'wallet_account_id' => $wallet->id,
+                'type' => 'topup_manual',
+                'amount' => (float) $transfer->amount,
+                'transaction_date' => $now,
+                'note' => $note,
+            ]);
+
+            $transfer->update([
+                'status' => 'completed',
+                'approved_at' => $now,
+                'approved_by_user_id' => auth()->id(),
+            ]);
+        });
+
+        return back()->with('success', 'Topup disetujui dan saldo anggota telah bertambah.');
+    }
+
+    /**
+     * Admin membatalkan (menolak) topup.
+     */
+    public function cancelTopup(MobileTransferRequest $transfer)
+    {
+        $tenantId = auth()->user()->tenantUserId();
+
+        abort_if((int) $transfer->user_id !== $tenantId, 404);
+        abort_if($transfer->kind !== 'topup' || $transfer->status !== 'pending', 422, 'Topup tidak valid atau sudah diproses.');
+
+        $transfer->update([
+            'status' => 'rejected',
+            'approved_at' => now(),
+            'approved_by_user_id' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Permintaan topup dibatalkan/ditolak.');
     }
 }

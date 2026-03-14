@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\MobileAccessToken;
 use App\Models\User;
+use App\Models\KoperasiMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -25,12 +26,6 @@ class MobileAuthController extends Controller
             return response()->json([
                 'message' => 'Email atau password tidak valid.',
             ], 422);
-        }
-
-        if ($user->isPendingApproval()) {
-            return response()->json([
-                'message' => 'Akun Anda masih menunggu persetujuan admin.',
-            ], 403);
         }
 
         if ($user->isBanned()) {
@@ -69,6 +64,8 @@ class MobileAuthController extends Controller
             'expires_at' => now()->addDays(30),
         ]);
 
+        $this->ensureMemberLinked($user);
+
         return response()->json([
             'message' => 'Login berhasil.',
             'token' => $plainToken,
@@ -78,8 +75,16 @@ class MobileAuthController extends Controller
         ]);
     }
 
+    public function register(Request $request)
+    {
+        return response()->json([
+            'message' => 'Pendaftaran online dinonaktifkan. Silakan hubungi admin koperasi untuk dibuatkan akun.',
+        ], 403);
+    }
+
     public function me(Request $request)
     {
+        $this->ensureMemberLinked($request->user());
         return response()->json([
             'user' => $this->transformUser($request->user()),
         ]);
@@ -99,9 +104,8 @@ class MobileAuthController extends Controller
 
     private function transformUser(User $user): array
     {
-        $permissions = $user->is_admin || $user->is_platform_admin
-            ? array_keys(User::PERMISSIONS)
-            : ($user->permissions ?? []);
+        // Aplikasi mobile: berikan akses penuh fitur front-end tanpa perlu atur user management manual
+        $permissions = array_keys(User::PERMISSIONS);
 
         $role = 'anggota_penabung';
 
@@ -131,6 +135,77 @@ class MobileAuthController extends Controller
             'permissions' => $permissions,
             'role' => $role,
             'tenant_user_id' => $user->tenantUserId(),
+            'cooperative_id' => $user->data_owner_user_id ?: $user->id,
+            'cooperative_code' => $user->cooperative_code,
+            'member' => $this->memberInfo($user),
         ];
+    }
+
+    private function memberInfo(User $user): ?array
+    {
+        $member = KoperasiMember::query()
+            ->where('user_id', $user->tenantUserId())
+            ->where('account_user_id', $user->id)
+            ->orderBy('id')
+            ->first();
+
+        if (!$member) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $member->id,
+            'member_no' => $member->member_no,
+            'name' => $member->name,
+            'status' => $member->status,
+            'join_date' => optional($member->join_date)->toDateString(),
+        ];
+    }
+
+    private function ensureMemberLinked(User $user): void
+    {
+        if (!$user->isCooperativeMode()) {
+            return;
+        }
+
+        $tenantId = (int) $user->tenantUserId();
+        $member = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->where('account_user_id', $user->id)
+            ->orderBy('id')
+            ->first();
+
+        if ($member) {
+            return;
+        }
+
+        $unbound = KoperasiMember::query()
+            ->where('user_id', $tenantId)
+            ->whereNull('account_user_id')
+            ->withSum('savings as total_savings', 'amount')
+            ->orderByDesc('total_savings')
+            ->orderBy('id')
+            ->first();
+
+        if ($unbound) {
+            $unbound->account_user_id = $user->id;
+            if (!$unbound->member_no) {
+                $unbound->member_no = KoperasiMember::generateUniqueAccountNumber();
+            }
+            if (!$unbound->join_date) {
+                $unbound->join_date = now();
+            }
+            $unbound->save();
+            return;
+        }
+
+        KoperasiMember::create([
+            'user_id' => $tenantId,
+            'account_user_id' => $user->id,
+            'member_no' => KoperasiMember::generateUniqueAccountNumber(),
+            'name' => $user->name,
+            'status' => $user->isApproved() ? 'aktif' : 'nonaktif',
+            'join_date' => now(),
+        ]);
     }
 }

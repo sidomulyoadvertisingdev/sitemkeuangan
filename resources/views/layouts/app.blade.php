@@ -260,7 +260,7 @@
                         </li>
                     @endif
 
-                    @if(!$isCooperativeMode && auth()->user()->hasPermission('bank_accounts.manage'))
+                    @if(auth()->user()->hasPermission('bank_accounts.manage'))
                         <li class="nav-item">
                             <a href="{{ route('bank-accounts.index') }}"
                                class="nav-link {{ request()->routeIs('bank-accounts*') ? 'active' : '' }}">
@@ -426,6 +426,13 @@
                                 <p>My Profile</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="{{ route('koperasi.topups.index') }}"
+                               class="nav-link {{ request()->routeIs('koperasi.topups.index') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-money-check-alt"></i>
+                                <p>Topup Pending</p>
+                            </a>
+                        </li>
                     @endif
 
                     @if(!$isCooperativeMode && auth()->user()->hasPermission('reports.view'))
@@ -472,6 +479,7 @@
         <section class="content">
             <div class="container-fluid">
                 @yield('content')
+                {{ $slot ?? '' }}
             </div>
         </section>
     </div>

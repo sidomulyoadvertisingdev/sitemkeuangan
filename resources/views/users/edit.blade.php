@@ -62,33 +62,28 @@
             </div>
 
             <div class="form-group" id="iuranMemberBox">
-                <label>Target Iuran Anggota (sinkron ke modul iuran)</label>
+                <label>Setoran Awal Anggota Koperasi (otomatis masuk saldo)</label>
                 <input type="number"
                        name="iuran_target_amount"
                        id="iuran_target_amount"
                        class="form-control mb-2"
-                       min="1"
+                       min="0"
                        step="1"
-                       value="{{ old('iuran_target_amount', 1200000) }}"
-                       placeholder="Contoh: 1200000">
-                <div class="form-row">
+                       value="{{ old('iuran_target_amount', 0) }}"
+                       placeholder="Contoh: 50000">
+                <small class="text-muted">
+                    Nominal ini akan langsung dicatat sebagai setoran awal ke saldo anggota koperasi.
+                </small>
+                <div class="form-row" style="display:none;">
                     <div class="col">
-                        <input type="number"
+                        <input type="hidden"
                                name="iuran_target_start_year"
-                               class="form-control"
-                               min="2000"
-                               max="2100"
-                               value="{{ old('iuran_target_start_year', date('Y')) }}"
-                               placeholder="Tahun Awal">
+                               value="{{ old('iuran_target_start_year', date('Y')) }}">
                     </div>
                     <div class="col">
-                        <input type="number"
+                        <input type="hidden"
                                name="iuran_target_end_year"
-                               class="form-control"
-                               min="2000"
-                               max="2100"
-                               value="{{ old('iuran_target_end_year', date('Y')) }}"
-                               placeholder="Tahun Akhir">
+                               value="{{ old('iuran_target_end_year', date('Y')) }}">
                     </div>
                 </div>
             </div>

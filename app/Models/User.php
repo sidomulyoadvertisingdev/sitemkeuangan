@@ -48,6 +48,7 @@ class User extends Authenticatable
         'invite_quota',
         'banned_at',
         'banned_reason',
+        'cooperative_code',
     ];
 
     protected $hidden = [
@@ -65,6 +66,19 @@ class User extends Authenticatable
         'banned_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $user): void {
+            if (
+                $user->account_mode === self::MODE_COOPERATIVE &&
+                empty($user->data_owner_user_id) &&
+                empty($user->cooperative_code)
+            ) {
+                $user->cooperative_code = self::generateCooperativeCode();
+            }
+        });
+    }
+
     public static function permissionOptions(): array
     {
         return self::PERMISSIONS;
@@ -76,6 +90,19 @@ class User extends Authenticatable
             self::MODE_ORGANIZATION => 'Organizational Finance',
             self::MODE_COOPERATIVE => 'Cooperative Finance',
         ];
+    }
+
+    public static function generateCooperativeCode(int $maxAttempts = 200): string
+    {
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            $candidate = 'KOP-' . random_int(100000, 999999);
+            $exists = self::query()->where('cooperative_code', $candidate)->exists();
+            if (!$exists) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('Gagal membuat kode koperasi unik.');
     }
 
     public function isOrganizationMode(): bool
